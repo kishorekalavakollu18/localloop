@@ -1,0 +1,22 @@
+{
+  "name": "localloop",
+  "version": "1.0.0",
+  "description": "LocalLoop — Hyperlocal Service Marketplace with MongoDB 2dsphere and Leaflet OpenStreetMap",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "seed": "cd backend && npm run seed",
+    "install:all": "npm --prefix backend install && npm --prefix frontend install"
+  },
+  "keywords": [
+    "hyperlocal",
+    "marketplace",
+    "leaflet",
+    "mongodb-2dsphere",
+    "react",
+    "vite",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC"
+}
