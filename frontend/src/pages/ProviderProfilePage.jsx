@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { providerService } from '../services/api';
+import { providerService, getImageUrl } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import BookingModal from '../components/BookingModal';
 import ReviewModal from '../components/ReviewModal';
@@ -117,7 +117,7 @@ const ProviderProfilePage = () => {
               {/* Main Avatar / Image */}
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 shadow-sm">
                 <img
-                  src={provider.images?.[0] || DEFAULT_IMAGE}
+                  src={getImageUrl(provider.images?.[0])}
                   alt={provider.businessName}
                   className="w-full h-full object-cover"
                 />

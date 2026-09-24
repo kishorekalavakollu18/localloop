@@ -1,6 +1,33 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// Dynamic API URL detection:
+// 1. Uses VITE_API_URL if configured in environment
+// 2. If running on Vercel deployment (localloop-mu.vercel.app), targets the deployed Render backend
+// 3. Otherwise defaults to '/api' (Vite local dev proxy)
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+    return 'https://localloop-dszf.onrender.com/api';
+  }
+  return '/api';
+};
+
+export const API_URL = getApiBaseUrl();
+
+// Helper to format uploaded image URLs in both local & production
+export const getImageUrl = (url) => {
+  if (!url) return 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&auto=format&fit=crop&q=80';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  
+  const backendHost = import.meta.env.VITE_API_URL
+    ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '')
+    : (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+        ? 'https://localloop-dszf.onrender.com'
+        : '');
+  return `${backendHost}${url}`;
+};
 
 const api = axios.create({
   baseURL: API_URL,
@@ -21,7 +48,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for handling errors
+// Response interceptor for handling errors & 401 unauth
 api.interceptors.response.use(
   (response) => response,
   (error) => {

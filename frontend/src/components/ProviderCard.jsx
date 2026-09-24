@@ -2,6 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, CheckCircle, Clock, ArrowRight } from 'lucide-react';
 
+import { getImageUrl } from '../services/api';
+
 const CATEGORY_COLORS = {
   plumber: 'bg-blue-50 text-blue-700 border-blue-200',
   electrician: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -22,10 +24,7 @@ const ProviderCard = ({
   const categoryStyle =
     CATEGORY_COLORS[provider.category] || 'bg-slate-50 text-slate-700 border-slate-200';
 
-  const imageUrl =
-    provider.images && provider.images.length > 0
-      ? provider.images[0]
-      : DEFAULT_IMAGE;
+  const imageUrl = getImageUrl(provider.images?.[0]);
 
   return (
     <div
