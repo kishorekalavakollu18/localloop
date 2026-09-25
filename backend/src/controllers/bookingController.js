@@ -1,7 +1,7 @@
 const Booking = require('../models/Booking');
 const Provider = require('../models/Provider');
 
-// @desc    Create a new service booking
+// @desc    Create a new service booking with slot conflict check
 // @route   POST /api/bookings
 // @access  Private (Customer/User)
 exports.createBooking = async (req, res) => {
@@ -32,6 +32,25 @@ exports.createBooking = async (req, res) => {
       });
     }
 
+    // Phase 3 & 5: Double-Booking Slot Conflict Check
+    const targetDate = new Date(serviceDate);
+    const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
+
+    const existingConflict = await Booking.findOne({
+      providerId,
+      slot,
+      serviceDate: { $gte: startOfDay, $lte: endOfDay },
+      status: { $in: ['pending', 'confirmed'] },
+    });
+
+    if (existingConflict) {
+      return res.status(409).json({
+        success: false,
+        message: 'This time slot has already been booked by another customer. Please select a different slot or date.',
+      });
+    }
+
     const booking = await Booking.create({
       customerId: req.user._id,
       providerId,
@@ -42,8 +61,17 @@ exports.createBooking = async (req, res) => {
     });
 
     const populatedBooking = await Booking.findById(booking._id)
-      .populate('providerId', 'businessName category address pricing images')
+      .populate('providerId', 'businessName category address pricing images userId')
       .populate('customerId', 'name email phone');
+
+    // Real-time Socket.io notification emit to provider
+    const io = req.app.get('io');
+    if (io) {
+      io.emit(`provider_booking_${provider.userId}`, {
+        type: 'new_booking',
+        booking: populatedBooking,
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -66,7 +94,6 @@ exports.getBookingsByCustomer = async (req, res) => {
   try {
     const { customerId } = req.params;
 
-    // Authorization check
     if (
       req.user._id.toString() !== customerId &&
       req.user.role !== 'admin'
@@ -80,7 +107,7 @@ exports.getBookingsByCustomer = async (req, res) => {
     const bookings = await Booking.find({ customerId })
       .populate({
         path: 'providerId',
-        select: 'businessName category address pricing images rating phone location',
+        select: 'businessName category address pricing images rating phone location userId',
         populate: {
           path: 'userId',
           select: 'name phone email',
@@ -117,7 +144,6 @@ exports.getBookingsByProvider = async (req, res) => {
       });
     }
 
-    // Verify ownership
     if (
       provider.userId.toString() !== req.user._id.toString() &&
       req.user.role !== 'admin'
@@ -146,7 +172,7 @@ exports.getBookingsByProvider = async (req, res) => {
   }
 };
 
-// @desc    Update booking status (confirm, cancel, complete)
+// @desc    Update booking status (confirm, cancel, complete) with Socket.io notification
 // @route   PUT /api/bookings/:id/status
 // @access  Private
 exports.updateBookingStatus = async (req, res) => {
@@ -170,7 +196,6 @@ exports.updateBookingStatus = async (req, res) => {
       });
     }
 
-    // Check authorization: either the provider or the customer can change certain statuses
     const isProvider = booking.providerId.userId.toString() === req.user._id.toString();
     const isCustomer = booking.customerId.toString() === req.user._id.toString();
     const isAdmin = req.user.role === 'admin';
@@ -182,7 +207,6 @@ exports.updateBookingStatus = async (req, res) => {
       });
     }
 
-    // Customer can only cancel their booking
     if (isCustomer && !isProvider && !isAdmin) {
       if (status !== 'cancelled') {
         return res.status(403).json({
@@ -196,8 +220,17 @@ exports.updateBookingStatus = async (req, res) => {
     await booking.save();
 
     const updatedBooking = await Booking.findById(booking._id)
-      .populate('providerId', 'businessName category address pricing images')
+      .populate('providerId', 'businessName category address pricing images userId')
       .populate('customerId', 'name email phone');
+
+    // Real-time notification emit via Socket.io
+    const io = req.app.get('io');
+    if (io) {
+      io.emit(`booking_status_${booking._id}`, {
+        status,
+        booking: updatedBooking,
+      });
+    }
 
     return res.status(200).json({
       success: true,

@@ -1,9 +1,5 @@
 import axios from 'axios';
 
-// Dynamic API URL detection:
-// 1. Uses VITE_API_URL if configured in environment
-// 2. If running on Vercel deployment (localloop-mu.vercel.app), targets the deployed Render backend
-// 3. Otherwise defaults to '/api' (Vite local dev proxy)
 const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
@@ -16,7 +12,6 @@ const getApiBaseUrl = () => {
 
 export const API_URL = getApiBaseUrl();
 
-// Helper to format uploaded image URLs in both local & production
 export const getImageUrl = (url) => {
   if (!url) return 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&auto=format&fit=crop&q=80';
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -36,7 +31,6 @@ const api = axios.create({
   },
 });
 
-// Attach JWT token to all outgoing requests if present
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -48,7 +42,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for handling errors & 401 unauth
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -58,7 +51,6 @@ api.interceptors.response.use(
   }
 );
 
-// API Service Methods
 export const authService = {
   login: async (credentials) => {
     const res = await api.post('/auth/login', credentials);
@@ -79,6 +71,10 @@ export const providerService = {
     const res = await api.get('/providers/nearby', { params });
     return res.data;
   },
+  getAutocomplete: async (query) => {
+    const res = await api.get('/providers/autocomplete', { params: { q: query } });
+    return res.data;
+  },
   getById: async (id) => {
     const res = await api.get(`/providers/${id}`);
     return res.data;
@@ -95,6 +91,14 @@ export const providerService = {
     const formData = new FormData();
     formData.append('image', file);
     const res = await api.post(`/providers/${id}/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+  uploadVerificationDoc: async (id, file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    const res = await api.post(`/providers/${id}/verify-document`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return res.data;
@@ -127,6 +131,40 @@ export const reviewService = {
   },
   getProviderReviews: async (providerId) => {
     const res = await api.get(`/reviews/provider/${providerId}`);
+    return res.data;
+  },
+};
+
+export const adminService = {
+  getStats: async () => {
+    const res = await api.get('/admin/stats');
+    return res.data;
+  },
+  getPendingVerifications: async () => {
+    const res = await api.get('/admin/providers/pending');
+    return res.data;
+  },
+  updateVerificationStatus: async (id, status) => {
+    const res = await api.put(`/admin/providers/${id}/verify`, { status });
+    return res.data;
+  },
+  toggleUserBan: async (userId) => {
+    const res = await api.put(`/admin/users/${userId}/ban`);
+    return res.data;
+  },
+  getUsers: async () => {
+    const res = await api.get('/admin/users');
+    return res.data;
+  },
+};
+
+export const messageService = {
+  getBookingMessages: async (bookingId) => {
+    const res = await api.get(`/messages/${bookingId}`);
+    return res.data;
+  },
+  sendMessage: async (data) => {
+    const res = await api.post('/messages', data);
     return res.data;
   },
 };

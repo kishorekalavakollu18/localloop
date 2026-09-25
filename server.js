@@ -55,15 +55,15 @@ connectDB();
 // Security Headers with Helmet
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: false, // Disable for Leaflet OpenStreetMap tiles & remote images
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
 
-// Rate Limiting
+// Rate Limiting (Phase 2 & 4 Production Security)
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300, // max requests per IP
   message: {
     success: false,
     message: 'Too many requests from this IP. Please try again later.',

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { bookingService } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import ReviewModal from '../components/ReviewModal';
+import ChatModal from '../components/ChatModal';
 import {
   Calendar,
   Clock,
@@ -25,9 +26,11 @@ const CustomerDashboard = () => {
   const [error, setError] = useState('');
   const [filterTab, setFilterTab] = useState('all'); // 'all', 'active', 'completed'
 
-  // Review modal state
+  // Review & Chat modal state
   const [reviewBooking, setReviewBooking] = useState(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [chatBooking, setChatBooking] = useState(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const fetchBookings = async () => {
     if (!user?._id) return;
@@ -275,6 +278,17 @@ const CustomerDashboard = () => {
                     </Link>
 
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setChatBooking(booking);
+                          setIsChatOpen(true);
+                        }}
+                        className="px-3.5 py-2 bg-[#F7EBE5] text-[#C6511F] hover:bg-[#F0D5C9] rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors border border-[#F0D5C9]"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Chat</span>
+                      </button>
+
                       {isPastOrComplete && (
                         <button
                           onClick={() => {
@@ -283,8 +297,8 @@ const CustomerDashboard = () => {
                           }}
                           className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
                         >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>Leave Review</span>
+                          <Star className="w-3.5 h-3.5 fill-white" />
+                          <span>Review</span>
                         </button>
                       )}
 
@@ -293,7 +307,7 @@ const CustomerDashboard = () => {
                           onClick={() => handleCancelBooking(booking._id)}
                           className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl text-xs font-bold border border-rose-200 transition-colors"
                         >
-                          Cancel Booking
+                          Cancel
                         </button>
                       )}
                     </div>
@@ -311,6 +325,13 @@ const CustomerDashboard = () => {
         isOpen={isReviewOpen}
         onClose={() => setIsReviewOpen(false)}
         onReviewSubmitted={fetchBookings}
+      />
+
+      {/* Chat Modal */}
+      <ChatModal
+        booking={chatBooking}
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
       />
     </div>
   );

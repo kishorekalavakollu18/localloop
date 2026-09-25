@@ -78,6 +78,15 @@ const providerSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    verificationStatus: {
+      type: String,
+      enum: ['unverified', 'pending', 'approved', 'rejected'],
+      default: 'approved',
+    },
+    verificationDoc: {
+      type: String,
+      default: '',
+    },
     createdAt: {
       type: Date,
       default: Date.now,

@@ -2,9 +2,16 @@ const Provider = require('../models/Provider');
 const Review = require('../models/Review');
 const User = require('../models/User');
 
-// Helper to convert meters to kilometers
 const metersToKm = (meters) => {
   return Math.round((meters / 1000) * 10) / 10;
+};
+
+// Calculate travel fee logic: free up to 3km, +₹50 for every additional 3km block
+const calculateTravelFee = (distanceKm) => {
+  if (!distanceKm || distanceKm <= 3) return 0;
+  const extraKm = distanceKm - 3;
+  const blocks = Math.ceil(extraKm / 3);
+  return blocks * 50;
 };
 
 // @desc    Register / Create a provider profile
@@ -14,7 +21,6 @@ exports.createProvider = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Check if provider profile already exists
     const existingProvider = await Provider.findOne({ userId });
     if (existingProvider) {
       return res.status(400).json({
@@ -42,20 +48,18 @@ exports.createProvider = async (req, res) => {
       });
     }
 
-    // Default coordinates if not provided (e.g., standard city center default [lng, lat])
-    let coords = [77.5946, 12.9716]; // Default Bangalore center, or user provided
+    let coords = [77.5946, 12.9716];
     if (coordinates && Array.isArray(coordinates) && coordinates.length === 2) {
       coords = [parseFloat(coordinates[0]), parseFloat(coordinates[1])];
     }
 
-    // Default availability if none provided
     const defaultAvailability = availability || [
-      { day: 'Monday', slots: ['09:00 - 12:00', '14:00 - 18:00'] },
-      { day: 'Tuesday', slots: ['09:00 - 12:00', '14:00 - 18:00'] },
-      { day: 'Wednesday', slots: ['09:00 - 12:00', '14:00 - 18:00'] },
-      { day: 'Thursday', slots: ['09:00 - 12:00', '14:00 - 18:00'] },
-      { day: 'Friday', slots: ['09:00 - 12:00', '14:00 - 18:00'] },
-      { day: 'Saturday', slots: ['10:00 - 16:00'] },
+      { day: 'Monday', slots: ['09:00 - 12:00', '14:00 - 17:00'] },
+      { day: 'Tuesday', slots: ['09:00 - 12:00', '14:00 - 17:00'] },
+      { day: 'Wednesday', slots: ['09:00 - 12:00', '14:00 - 17:00'] },
+      { day: 'Thursday', slots: ['09:00 - 12:00', '14:00 - 17:00'] },
+      { day: 'Friday', slots: ['09:00 - 12:00', '14:00 - 17:00'] },
+      { day: 'Saturday', slots: ['10:00 - 15:00'] },
     ];
 
     const provider = await Provider.create({
@@ -74,14 +78,15 @@ exports.createProvider = async (req, res) => {
       },
       availability: defaultAvailability,
       images: images || [],
+      verificationStatus: 'pending',
+      isVerified: false,
     });
 
-    // Also ensure user role is marked as provider
     await User.findByIdAndUpdate(userId, { role: 'provider' });
 
     return res.status(201).json({
       success: true,
-      message: 'Provider profile created successfully',
+      message: 'Provider profile created successfully. Verification pending.',
       provider,
     });
   } catch (error) {
@@ -93,17 +98,16 @@ exports.createProvider = async (req, res) => {
   }
 };
 
-// @desc    Get nearby providers with 2dsphere geospatial search
+// @desc    Get nearby providers with 2dsphere geospatial search, travel fees, and relevance ranking
 // @route   GET /api/providers/nearby
 // @access  Public
 exports.getNearbyProviders = async (req, res) => {
   try {
     const { lat, lng, radius, category, search, sort } = req.query;
 
-    const radiusKm = radius ? parseFloat(radius) : 25; // default 25km radius
+    const radiusKm = radius ? parseFloat(radius) : 25;
     const maxDistanceMeters = radiusKm * 1000;
 
-    // Build filter query
     const matchFilter = {};
     if (category && category !== 'all') {
       matchFilter.category = category.toLowerCase();
@@ -116,7 +120,6 @@ exports.getNearbyProviders = async (req, res) => {
       ];
     }
 
-    // If coordinates are provided, perform $geoNear aggregation
     if (lat && lng && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lng);
@@ -155,7 +158,7 @@ exports.getNearbyProviders = async (req, res) => {
         },
       ];
 
-      // Sorting
+      // Sorting pipelines
       if (sort === 'rating') {
         pipeline.push({ $sort: { 'rating.avg': -1, distanceMeters: 1 } });
       } else if (sort === 'price_asc') {
@@ -163,17 +166,26 @@ exports.getNearbyProviders = async (req, res) => {
       } else if (sort === 'price_desc') {
         pipeline.push({ $sort: { 'pricing.amount': -1 } });
       } else {
-        // default sort by distance
         pipeline.push({ $sort: { distanceMeters: 1 } });
       }
 
       let providers = await Provider.aggregate(pipeline);
 
-      // Map formatted distance in km
-      providers = providers.map((p) => ({
-        ...p,
-        distanceKm: metersToKm(p.distanceMeters),
-      }));
+      // Map distance in km, calculate dynamic travel fee & relevance score
+      providers = providers.map((p) => {
+        const distKm = metersToKm(p.distanceMeters);
+        const travelFee = calculateTravelFee(distKm);
+        const relevanceScore = Math.round(
+          (p.rating?.avg || 0) * 20 + Math.max(0, 100 - distKm * 2) + (p.rating?.count || 0) * 0.5
+        );
+
+        return {
+          ...p,
+          distanceKm: distKm,
+          travelFee,
+          relevanceScore,
+        };
+      });
 
       return res.status(200).json({
         success: true,
@@ -183,7 +195,6 @@ exports.getNearbyProviders = async (req, res) => {
         providers,
       });
     } else {
-      // If coordinates not provided, return standard list with optional filters
       let query = Provider.find(matchFilter).populate('userId', 'name email phone');
 
       if (sort === 'rating') {
@@ -213,6 +224,49 @@ exports.getNearbyProviders = async (req, res) => {
   }
 };
 
+// @desc    Search autocomplete suggestions
+// @route   GET /api/providers/autocomplete
+// @access  Public
+exports.getAutocompleteSuggestions = async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.trim().length === 0) {
+      return res.status(200).json({ success: true, suggestions: [] });
+    }
+
+    const regex = new RegExp(q.trim(), 'i');
+
+    const matches = await Provider.find({
+      $or: [
+        { businessName: regex },
+        { category: regex },
+        { address: regex },
+        { description: regex },
+      ],
+    })
+      .select('businessName category address')
+      .limit(6);
+
+    const suggestions = matches.map((m) => ({
+      id: m._id,
+      title: m.businessName,
+      category: m.category,
+      subtitle: m.address,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      suggestions,
+    });
+  } catch (error) {
+    console.error('Error in autocomplete:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Server error fetching suggestions',
+    });
+  }
+};
+
 // @desc    Get provider by ID with populated details and reviews
 // @route   GET /api/providers/:id
 // @access  Public
@@ -230,7 +284,6 @@ exports.getProviderById = async (req, res) => {
       });
     }
 
-    // Fetch reviews for this provider
     const reviews = await Review.find({ providerId: provider._id })
       .populate('customerId', 'name')
       .sort({ createdAt: -1 });
@@ -263,7 +316,6 @@ exports.updateProvider = async (req, res) => {
       });
     }
 
-    // Verify ownership
     if (
       provider.userId.toString() !== req.user._id.toString() &&
       req.user.role !== 'admin'
@@ -278,7 +330,7 @@ exports.updateProvider = async (req, res) => {
       businessName,
       category,
       description,
-      coordinates, // [lng, lat]
+      coordinates,
       address,
       pricing,
       availability,
@@ -321,7 +373,7 @@ exports.updateProvider = async (req, res) => {
   }
 };
 
-// @desc    Upload image for provider
+// @desc    Upload image for provider profile
 // @route   POST /api/providers/:id/upload
 // @access  Private (Provider only)
 exports.uploadProviderImage = async (req, res) => {
@@ -332,16 +384,6 @@ exports.uploadProviderImage = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Provider profile not found',
-      });
-    }
-
-    if (
-      provider.userId.toString() !== req.user._id.toString() &&
-      req.user.role !== 'admin'
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to upload images for this profile',
       });
     }
 
@@ -367,6 +409,47 @@ exports.uploadProviderImage = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || 'Server error uploading file',
+    });
+  }
+};
+
+// @desc    Upload ID / verification document for provider
+// @route   POST /api/providers/:id/verify-document
+// @access  Private (Provider only)
+exports.uploadVerificationDoc = async (req, res) => {
+  try {
+    const provider = await Provider.findById(req.params.id);
+
+    if (!provider) {
+      return res.status(404).json({
+        success: false,
+        message: 'Provider profile not found',
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a document file to upload',
+      });
+    }
+
+    const fileUrl = `/uploads/${req.file.filename}`;
+    provider.verificationDoc = fileUrl;
+    provider.verificationStatus = 'pending';
+    await provider.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Verification document uploaded successfully. Submitted for admin review.',
+      verificationDoc: fileUrl,
+      verificationStatus: 'pending',
+    });
+  } catch (error) {
+    console.error('Error uploading verification doc:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Server error uploading document',
     });
   }
 };
