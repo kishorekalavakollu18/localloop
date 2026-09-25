@@ -11,15 +11,11 @@ import ProviderCard from '../components/ProviderCard';
 import {
   Search,
   MapPin,
-  Filter,
   SlidersHorizontal,
   Compass,
   AlertCircle,
-  Loader2,
   RefreshCw,
-  Layers,
-  Map,
-  List,
+  Sliders,
 } from 'lucide-react';
 
 const DiscoverPage = () => {
@@ -55,7 +51,6 @@ const DiscoverPage = () => {
     } catch (err) {
       console.warn('Geolocation failed:', err.message);
       setLocationStatus('denied');
-      // Set Bangalore default coordinates
       setUserLocation({ lat: 12.9716, lng: 77.5946 });
       setLocationName('Bengaluru (City Preset)');
     }
@@ -66,7 +61,7 @@ const DiscoverPage = () => {
     handleRequestLocation();
   }, [handleRequestLocation]);
 
-  // Load nearby providers from backend whenever filters or coordinates change
+  // Load nearby providers from backend
   const fetchProviders = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -98,7 +93,6 @@ const DiscoverPage = () => {
     fetchProviders();
   }, [fetchProviders]);
 
-  // City preset selection handler
   const handleSelectCityPreset = (city) => {
     setUserLocation({ lat: city.lat, lng: city.lng });
     setLocationName(city.name);
@@ -106,51 +100,50 @@ const DiscoverPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Top Filter and Search Bar */}
-      <div className="sticky top-16 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+    <div className="min-h-screen bg-[#FBF7F0] flex flex-col">
+      {/* Top Filter and Search Control Bar */}
+      <div className="sticky top-16 z-30 bg-[#FFFDF9]/95 backdrop-blur-md border-b border-[#E8DFC9] shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 space-y-3">
-          {/* Main search and location row */}
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
             {/* Search Input */}
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-[#C6511F] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by provider name, specialty, or area..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-100 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-hidden transition-all border border-transparent focus:border-indigo-500"
+                className="w-full pl-10 pr-4 py-2 bg-[#F2EBDC] rounded-xl text-xs font-semibold text-[#2B2621] placeholder:text-[#8C8275] focus:bg-white focus:ring-2 focus:ring-[#C6511F] focus:outline-hidden transition-all border border-[#E8DFC9]"
               />
             </div>
 
-            {/* Location Selector & Presets */}
+            {/* Location Selector & Controls */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200/80 rounded-xl text-xs font-semibold text-indigo-800">
-                <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F7EBE5] border border-[#F0D5C9] rounded-xl text-xs font-bold text-[#C6511F]">
+                <MapPin className="w-3.5 h-3.5 fill-[#C6511F] text-[#F7EBE5] shrink-0" />
                 <span className="truncate max-w-[140px] sm:max-w-[200px]">
                   {locationName}
                 </span>
                 <button
                   onClick={handleRequestLocation}
                   title="Detect live GPS location"
-                  className="ml-1 p-1 hover:bg-indigo-200/60 rounded-md transition-colors"
+                  className="ml-1 p-1 hover:bg-[#F0D5C9] rounded-md transition-colors"
                 >
                   <RefreshCw
-                    className={`w-3 h-3 text-indigo-700 ${
+                    className={`w-3 h-3 text-[#C6511F] ${
                       locationStatus === 'loading' ? 'animate-spin' : ''
                     }`}
                   />
                 </button>
               </div>
 
-              {/* City Switcher Dropdown */}
+              {/* City Switcher */}
               <select
                 onChange={(e) => {
                   const city = CITY_PRESETS.find((c) => c.name === e.target.value);
                   if (city) handleSelectCityPreset(city);
                 }}
-                className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-hidden cursor-pointer"
+                className="px-3 py-2 bg-[#F2EBDC] border border-[#E8DFC9] rounded-xl text-xs font-bold text-[#2B2621] focus:outline-hidden cursor-pointer"
               >
                 <option value="">Switch City / Hub</option>
                 {CITY_PRESETS.map((city) => (
@@ -161,8 +154,8 @@ const DiscoverPage = () => {
               </select>
 
               {/* Radius Filter */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-medium text-slate-700">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+              <div className="flex items-center gap-2 px-3 py-2 bg-[#F2EBDC] border border-[#E8DFC9] rounded-xl text-xs font-bold text-[#2B2621]">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#C6511F]" />
                 <span>Radius: {radius} km</span>
                 <input
                   type="range"
@@ -171,15 +164,15 @@ const DiscoverPage = () => {
                   step="2"
                   value={radius}
                   onChange={(e) => setRadius(Number(e.target.value))}
-                  className="w-16 sm:w-24 accent-indigo-600 cursor-pointer"
+                  className="w-16 sm:w-24 accent-[#C6511F] cursor-pointer"
                 />
               </div>
 
-              {/* Sort By */}
+              {/* Sort Dropdown */}
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-hidden cursor-pointer"
+                className="px-3 py-2 bg-[#F2EBDC] border border-[#E8DFC9] rounded-xl text-xs font-bold text-[#2B2621] focus:outline-hidden cursor-pointer"
               >
                 <option value="distance">Sort by Distance</option>
                 <option value="rating">Highest Rated</option>
@@ -187,14 +180,14 @@ const DiscoverPage = () => {
                 <option value="price_desc">Price: High to Low</option>
               </select>
 
-              {/* View Mode Toggle (Mobile / Desktop) */}
-              <div className="hidden sm:flex items-center bg-slate-200/80 p-1 rounded-xl">
+              {/* View Mode Toggle */}
+              <div className="hidden sm:flex items-center bg-[#E8DFC9] p-1 rounded-xl">
                 <button
                   onClick={() => setViewMode('split')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                     viewMode === 'split'
-                      ? 'bg-white text-indigo-600 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-[#C6511F] shadow-xs'
+                      : 'text-[#5C5346] hover:text-[#2B2621]'
                   }`}
                 >
                   Split
@@ -203,8 +196,8 @@ const DiscoverPage = () => {
                   onClick={() => setViewMode('map')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                     viewMode === 'map'
-                      ? 'bg-white text-indigo-600 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-[#C6511F] shadow-xs'
+                      : 'text-[#5C5346] hover:text-[#2B2621]'
                   }`}
                 >
                   Map
@@ -213,8 +206,8 @@ const DiscoverPage = () => {
                   onClick={() => setViewMode('list')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                     viewMode === 'list'
-                      ? 'bg-white text-indigo-600 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-[#C6511F] shadow-xs'
+                      : 'text-[#5C5346] hover:text-[#2B2621]'
                   }`}
                 >
                   List
@@ -229,10 +222,10 @@ const DiscoverPage = () => {
               <button
                 key={cat.id}
                 onClick={() => setCategory(cat.id)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
                   category === cat.id
-                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                    ? 'bg-[#C6511F] text-white shadow-md shadow-[#C6511F]/20'
+                    : 'bg-[#F2EBDC] text-[#5C5346] hover:bg-[#E8DFC9] hover:text-[#2B2621]'
                 }`}
               >
                 <span>{cat.label}</span>
@@ -242,22 +235,21 @@ const DiscoverPage = () => {
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Discover Layout */}
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
         {locationStatus === 'denied' && (
-          <div className="mb-4 flex items-center justify-between p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-800">
+          <div className="mb-4 flex items-center justify-between p-3.5 bg-[#FDF4E5] border border-[#F4DCB5] rounded-2xl text-xs text-[#B87719] font-bold">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-[#B87719] shrink-0" />
               <span>
-                Geolocation permission was not granted. We are showing results around <b>{locationName}</b>. You can switch hubs above.
+                Geolocation permission was not granted. Showing search around <b>{locationName}</b>.
               </span>
             </div>
           </div>
         )}
 
-        {/* Layout based on viewMode */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* List of Providers */}
+          {/* Provider Cards Column */}
           <div
             className={`${
               viewMode === 'map'
@@ -267,18 +259,17 @@ const DiscoverPage = () => {
                 : 'lg:col-span-7'
             } space-y-4`}
           >
-            {/* Header info */}
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-extrabold text-slate-900">
+              <h2 className="text-base font-heading font-extrabold text-[#2B2621]">
                 {category === 'all'
-                  ? 'All Local Professionals'
+                  ? 'All Neighborhood Professionals'
                   : `${CATEGORIES.find((c) => c.id === category)?.label || ''}`}
-                <span className="ml-2 text-xs font-semibold px-2 py-0.5 bg-slate-200 text-slate-700 rounded-full">
+                <span className="ml-2 text-xs font-bold px-2.5 py-0.5 bg-[#E8DFC9] text-[#2B2621] rounded-full">
                   {providers.length} found
                 </span>
               </h2>
 
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-[#8C8275] font-semibold">
                 Within {radius} km radius
               </span>
             </div>
@@ -288,25 +279,25 @@ const DiscoverPage = () => {
                 {[1, 2, 3, 4].map((i) => (
                   <div
                     key={i}
-                    className="h-72 bg-white rounded-2xl animate-pulse border border-slate-200"
+                    className="h-72 bg-white rounded-3xl animate-pulse border border-[#E8DFC9]"
                   />
                 ))}
               </div>
             ) : providers.length === 0 ? (
-              <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 space-y-4 shadow-xs">
-                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
+              <div className="bg-[#FFFDF9] rounded-3xl p-10 text-center border-2 border-[#E8DFC9] space-y-4 shadow-xs">
+                <div className="w-16 h-16 bg-[#F7EBE5] text-[#C6511F] rounded-2xl flex items-center justify-center mx-auto">
                   <Compass className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800">
+                <h3 className="text-lg font-heading font-extrabold text-[#2B2621]">
                   No providers found within {radius} km
                 </h3>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Try widening your radius search, selecting "All Services", or picking another neighborhood hub.
+                <p className="text-xs text-[#6B6153] max-w-md mx-auto">
+                  Try widening your search radius or selecting "All Services".
                 </p>
                 <div className="flex items-center justify-center gap-3 pt-2">
                   <button
                     onClick={() => setRadius(35)}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 hover:bg-indigo-700"
+                    className="px-4 py-2 bg-[#C6511F] text-white rounded-full text-xs font-bold shadow-md shadow-[#C6511F]/20 hover:bg-[#A84116]"
                   >
                     Increase Radius to 35 km
                   </button>
@@ -315,7 +306,7 @@ const DiscoverPage = () => {
                       setCategory('all');
                       setSearchQuery('');
                     }}
-                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200"
+                    className="px-4 py-2 bg-[#F2EBDC] text-[#2B2621] rounded-full text-xs font-bold hover:bg-[#E8DFC9]"
                   >
                     Reset Filters
                   </button>
@@ -351,7 +342,7 @@ const DiscoverPage = () => {
                 : 'lg:col-span-5 sticky top-40'
             }`}
           >
-            <div className="bg-white p-2 rounded-3xl border border-slate-200 shadow-md">
+            <div className="bg-[#FFFDF9] p-2.5 rounded-3xl border-2 border-[#E8DFC9] shadow-md">
               <LeafletMap
                 providers={providers}
                 userLocation={userLocation}

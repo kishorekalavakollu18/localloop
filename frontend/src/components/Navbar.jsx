@@ -12,6 +12,7 @@ import {
   X,
   PlusCircle,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -31,20 +32,20 @@ const Navbar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+    <nav className="sticky top-0 z-50 bg-[#FFFDF9]/90 backdrop-blur-md border-b border-[#E8DFC9] shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           {/* Brand Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
-              <MapPin className="w-5 h-5" />
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="w-10 h-10 rounded-xl bg-[#C6511F] text-white flex items-center justify-center shadow-md shadow-[#C6511F]/20 group-hover:scale-105 transition-transform">
+              <MapPin className="w-5 h-5 fill-white text-[#C6511F]" />
             </div>
             <div>
-              <span className="text-xl font-extrabold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
+              <span className="text-xl font-heading font-extrabold text-[#2B2621] tracking-tight group-hover:text-[#C6511F] transition-colors">
                 LocalLoop
               </span>
-              <span className="hidden sm:inline-block ml-1 text-xs font-semibold px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded-md border border-indigo-200/60">
-                Hyperlocal
+              <span className="hidden sm:inline-block ml-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#F7EBE5] text-[#C6511F] rounded-md border border-[#F0D5C9]">
+                Neighborhood Map
               </span>
             </div>
           </Link>
@@ -53,23 +54,23 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-6">
             <Link
               to="/discover"
-              className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${
                 isActive('/discover')
-                  ? 'text-indigo-600 font-semibold'
-                  : 'text-slate-600 hover:text-indigo-600'
+                  ? 'text-[#C6511F] font-bold'
+                  : 'text-[#5C5346] hover:text-[#C6511F]'
               }`}
             >
-              <Compass className="w-4 h-4" />
+              <Compass className="w-4 h-4 text-[#C6511F]" />
               Discover Services
             </Link>
 
             {user && isCustomer && (
               <Link
                 to="/customer/dashboard"
-                className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${
                   isActive('/customer/dashboard')
-                    ? 'text-indigo-600 font-semibold'
-                    : 'text-slate-600 hover:text-indigo-600'
+                    ? 'text-[#C6511F] font-bold'
+                    : 'text-[#5C5346] hover:text-[#C6511F]'
                 }`}
               >
                 <Calendar className="w-4 h-4" />
@@ -80,10 +81,10 @@ const Navbar = () => {
             {user && isProvider && (
               <Link
                 to="/provider/dashboard"
-                className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${
                   isActive('/provider/dashboard')
-                    ? 'text-indigo-600 font-semibold'
-                    : 'text-slate-600 hover:text-indigo-600'
+                    ? 'text-[#C6511F] font-bold'
+                    : 'text-[#5C5346] hover:text-[#C6511F]'
                 }`}
               >
                 <Briefcase className="w-4 h-4" />
@@ -98,17 +99,17 @@ const Navbar = () => {
               <div className="relative">
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center gap-2.5 p-1.5 pr-3 rounded-full hover:bg-slate-100 transition-colors border border-slate-200"
+                  className="flex items-center gap-2.5 p-1.5 pr-3 rounded-full hover:bg-[#F2EBDC] transition-colors border border-[#E8DFC9] bg-white"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                  <div className="w-8 h-8 rounded-full bg-[#C6511F] text-white flex items-center justify-center font-heading font-bold text-sm shadow-xs">
                     {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                   </div>
                   <div className="text-left text-xs">
-                    <p className="font-semibold text-slate-800 leading-tight">
+                    <p className="font-bold text-[#2B2621] leading-tight">
                       {user.name.split(' ')[0]}
                     </p>
-                    <span className="inline-block capitalize text-[10px] text-indigo-600 font-medium">
-                      {user.role}
+                    <span className="inline-block capitalize text-[10px] text-[#5C7A5C] font-extrabold">
+                      ● {user.role}
                     </span>
                   </div>
                 </button>
@@ -116,12 +117,12 @@ const Navbar = () => {
                 {/* Dropdown Menu */}
                 {isUserMenuOpen && (
                   <div
-                    className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2"
+                    className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-[#E8DFC9] py-2 z-50 animate-in fade-in"
                     onMouseLeave={() => setIsUserMenuOpen(false)}
                   >
-                    <div className="px-4 py-2 border-b border-slate-100">
-                      <p className="text-xs text-slate-400">Signed in as</p>
-                      <p className="text-sm font-semibold text-slate-800 truncate">
+                    <div className="px-4 py-2 border-b border-[#F2EBDC]">
+                      <p className="text-xs text-[#8C8275]">Signed in as</p>
+                      <p className="text-sm font-bold text-[#2B2621] truncate">
                         {user.email}
                       </p>
                     </div>
@@ -130,9 +131,9 @@ const Navbar = () => {
                       <Link
                         to="/customer/dashboard"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#2B2621] hover:bg-[#F7EBE5] hover:text-[#C6511F] font-medium"
                       >
-                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <Calendar className="w-4 h-4 text-[#8C8275]" />
                         My Bookings & Reviews
                       </Link>
                     )}
@@ -141,20 +142,20 @@ const Navbar = () => {
                       <Link
                         to="/provider/dashboard"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#2B2621] hover:bg-[#F7EBE5] hover:text-[#C6511F] font-medium"
                       >
-                        <Briefcase className="w-4 h-4 text-slate-400" />
+                        <Briefcase className="w-4 h-4 text-[#8C8275]" />
                         Manage Service Listing
                       </Link>
                     )}
 
-                    <div className="border-t border-slate-100 my-1"></div>
+                    <div className="border-t border-[#F2EBDC] my-1"></div>
 
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors"
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-rose-700 hover:bg-rose-50 transition-colors font-medium"
                     >
-                      <LogOut className="w-4 h-4 text-rose-500" />
+                      <LogOut className="w-4 h-4 text-rose-600" />
                       Sign Out
                     </button>
                   </div>
@@ -164,13 +165,13 @@ const Navbar = () => {
               <div className="flex items-center gap-2.5">
                 <Link
                   to="/login"
-                  className="px-4 py-2 text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  className="px-4 py-2 text-sm font-bold text-[#2B2621] hover:text-[#C6511F] transition-colors"
                 >
                   Sign In
                 </Link>
                 <Link
                   to="/register"
-                  className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-500/20 transition-all hover:shadow-md"
+                  className="px-4 py-2 text-sm font-bold text-white bg-[#C6511F] hover:bg-[#A84116] rounded-xl shadow-md shadow-[#C6511F]/20 transition-all hover:scale-[1.02]"
                 >
                   Get Started
                 </Link>
@@ -182,7 +183,7 @@ const Navbar = () => {
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 text-slate-600 hover:text-slate-900 rounded-lg focus:outline-hidden"
+              className="p-2 text-[#2B2621] hover:text-[#C6511F] rounded-lg focus:outline-hidden"
               aria-label="Toggle Menu"
             >
               {isMobileMenuOpen ? (
@@ -197,13 +198,13 @@ const Navbar = () => {
 
       {/* Mobile Menu dropdown */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-5 space-y-3">
+        <div className="md:hidden border-t border-[#E8DFC9] bg-[#FFFDF9] px-4 pt-3 pb-5 space-y-3">
           <Link
             to="/discover"
             onClick={() => setIsMobileMenuOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
+            className="flex items-center gap-2 px-3 py-2 text-base font-bold text-[#2B2621] hover:bg-[#F2EBDC] rounded-xl"
           >
-            <Compass className="w-5 h-5 text-indigo-600" />
+            <Compass className="w-5 h-5 text-[#C6511F]" />
             Discover Services
           </Link>
 
@@ -211,9 +212,9 @@ const Navbar = () => {
             <Link
               to="/customer/dashboard"
               onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
+              className="flex items-center gap-2 px-3 py-2 text-base font-bold text-[#2B2621] hover:bg-[#F2EBDC] rounded-xl"
             >
-              <Calendar className="w-5 h-5 text-indigo-600" />
+              <Calendar className="w-5 h-5 text-[#C6511F]" />
               My Bookings
             </Link>
           )}
@@ -222,23 +223,23 @@ const Navbar = () => {
             <Link
               to="/provider/dashboard"
               onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
+              className="flex items-center gap-2 px-3 py-2 text-base font-bold text-[#2B2621] hover:bg-[#F2EBDC] rounded-xl"
             >
-              <Briefcase className="w-5 h-5 text-indigo-600" />
+              <Briefcase className="w-5 h-5 text-[#C6511F]" />
               Provider Dashboard
             </Link>
           )}
 
-          <div className="border-t border-slate-100 pt-3">
+          <div className="border-t border-[#E8DFC9] pt-3">
             {user ? (
               <div className="space-y-2">
                 <div className="px-3 py-1">
-                  <p className="text-sm font-semibold text-slate-800">{user.name}</p>
-                  <p className="text-xs text-slate-500">{user.email}</p>
+                  <p className="text-sm font-bold text-[#2B2621]">{user.name}</p>
+                  <p className="text-xs text-[#8C8275]">{user.email}</p>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left flex items-center gap-2 px-3 py-2 text-base font-medium text-rose-600 hover:bg-rose-50 rounded-lg"
+                  className="w-full text-left flex items-center gap-2 px-3 py-2 text-base font-bold text-rose-700 hover:bg-rose-50 rounded-xl"
                 >
                   <LogOut className="w-5 h-5" />
                   Sign Out
@@ -249,14 +250,14 @@ const Navbar = () => {
                 <Link
                   to="/login"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-center px-4 py-2.5 text-sm font-semibold text-slate-700 bg-slate-100 rounded-lg"
+                  className="text-center px-4 py-2.5 text-sm font-bold text-[#2B2621] bg-[#F2EBDC] rounded-xl"
                 >
                   Sign In
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-center px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-lg"
+                  className="text-center px-4 py-2.5 text-sm font-bold text-white bg-[#C6511F] rounded-xl"
                 >
                   Get Started
                 </Link>
