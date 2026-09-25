@@ -20,7 +20,6 @@ import {
   Compass,
   CheckCircle2,
   Clock,
-  Heart,
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -32,6 +31,57 @@ const ICON_MAP = {
   Cpu: Cpu,
   Layers: Layers,
 };
+
+const HERO_FLOATING_CARDS = [
+  {
+    id: 1,
+    title: 'Ramesh HydroTech',
+    role: 'Master Plumber',
+    rating: '4.9★',
+    location: 'Indiranagar',
+    icon: Wrench,
+    badgeBg: 'bg-[#C6511F]',
+    floatClass: 'animate-float-1',
+    posClass: 'top-10 left-4 sm:left-12 lg:left-16',
+    factor: 0.02,
+  },
+  {
+    id: 2,
+    title: 'Neha Tutoring',
+    role: 'Math & Physics',
+    rating: 'Available Now',
+    location: 'HSR Layout',
+    icon: GraduationCap,
+    badgeBg: 'bg-[#5C7A5C]',
+    floatClass: 'animate-float-2',
+    posClass: 'top-14 right-4 sm:right-12 lg:right-20',
+    factor: -0.025,
+  },
+  {
+    id: 3,
+    title: 'Annapurna Tiffin',
+    role: '12 Meals Cooking',
+    rating: 'Hot Delivery',
+    location: 'BTM Layout',
+    icon: Utensils,
+    badgeBg: 'bg-[#D96B27]',
+    floatClass: 'animate-float-3',
+    posClass: 'bottom-20 right-6 sm:right-16 lg:right-24',
+    factor: 0.018,
+  },
+  {
+    id: 4,
+    title: 'Anil Spark Electrical',
+    role: 'Licensed Electrician',
+    rating: '5.0★',
+    location: 'Koramangala',
+    icon: Zap,
+    badgeBg: 'bg-[#E8A33D]',
+    floatClass: 'animate-float-1',
+    posClass: 'bottom-16 left-6 sm:left-16 lg:left-24',
+    factor: -0.02,
+  },
+];
 
 const TESTIMONIAL_STICKIES = [
   {
@@ -71,6 +121,9 @@ const LandingPage = () => {
   const [featuredProviders, setFeaturedProviders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Parallax Mouse Coordinates State
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
@@ -87,6 +140,16 @@ const LandingPage = () => {
     fetchFeatured();
   }, []);
 
+  const handleMouseMove = (e) => {
+    const { clientX, clientY } = e;
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    setMousePos({
+      x: (clientX - centerX),
+      y: (clientY - centerY),
+    });
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
     const params = new URLSearchParams();
@@ -101,39 +164,90 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-[#FBF7F0] flex flex-col overflow-x-hidden">
-      {/* 1. HERO SECTION — Live Map Backdrop & Terracotta/Charcoal Editorial Identity */}
-      <section className="relative map-bg-pattern text-white pt-24 pb-36 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        {/* Animated Live Provider Map Pulse Dots */}
-        <div className="absolute top-1/4 left-1/5 w-4 h-4 bg-[#C6511F] rounded-full animate-ping opacity-75"></div>
-        <div className="absolute top-1/4 left-1/5 w-3 h-3 bg-[#C6511F] rounded-full border-2 border-white"></div>
+      {/* 1. HERO SECTION — Living Map 3D Motion Layer & Radar Orbit Accent */}
+      <section
+        onMouseMove={handleMouseMove}
+        className="relative map-bg-pattern text-white pt-24 pb-36 px-4 sm:px-6 lg:px-8 overflow-hidden select-none"
+      >
+        {/* Radar Ping Location 1 (Indiranagar) */}
+        <div className="absolute top-1/4 left-1/5 pointer-events-none z-0">
+          <div className="w-8 h-8 rounded-full border-2 border-[#C6511F] animate-radar-ping absolute -top-2 -left-2"></div>
+          <div className="w-4 h-4 bg-[#C6511F] rounded-full border-2 border-white shadow-lg"></div>
+        </div>
 
-        <div className="absolute top-1/3 right-1/4 w-4 h-4 bg-[#E8A33D] rounded-full animate-ping opacity-75"></div>
-        <div className="absolute top-1/3 right-1/4 w-3 h-3 bg-[#E8A33D] rounded-full border-2 border-white"></div>
+        {/* Radar Ping Location 2 (Koramangala) */}
+        <div className="absolute top-1/3 right-1/4 pointer-events-none z-0">
+          <div className="w-8 h-8 rounded-full border-2 border-[#E8A33D] animate-radar-ping absolute -top-2 -left-2"></div>
+          <div className="w-4 h-4 bg-[#E8A33D] rounded-full border-2 border-white shadow-lg"></div>
+        </div>
 
-        <div className="absolute bottom-1/3 left-1/3 w-4 h-4 bg-[#5C7A5C] rounded-full animate-ping opacity-75"></div>
-        <div className="absolute bottom-1/3 left-1/3 w-3 h-3 bg-[#5C7A5C] rounded-full border-2 border-white"></div>
+        {/* Radar Ping Location 3 (HSR Layout) */}
+        <div className="absolute bottom-1/3 left-1/3 pointer-events-none z-0">
+          <div className="w-8 h-8 rounded-full border-2 border-[#5C7A5C] animate-radar-ping absolute -top-2 -left-2"></div>
+          <div className="w-4 h-4 bg-[#5C7A5C] rounded-full border-2 border-white shadow-lg"></div>
+        </div>
 
-        <div className="absolute top-1/2 right-1/6 w-4 h-4 bg-[#C6511F] rounded-full animate-ping opacity-75"></div>
-        <div className="absolute top-1/2 right-1/6 w-3 h-3 bg-[#C6511F] rounded-full border-2 border-white"></div>
+        {/* Rotating Discovery Orbit Accent (Geospatial Radius Ring) */}
+        <div className="hidden lg:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0">
+          <div className="w-96 h-96 sm:w-[520px] sm:h-[520px] rounded-full border border-dashed border-[#E8A33D]/25 relative animate-orbit">
+            <div className="w-3.5 h-3.5 bg-[#E8A33D] rounded-full border-2 border-[#2B2621] absolute -top-1.5 left-1/2 -translate-x-1/2 shadow-md"></div>
+          </div>
+        </div>
 
+        {/* Floating 3D Service Card Panels (3D Perspective & Mouse Parallax) */}
+        <div className="hidden md:block pointer-events-none">
+          {HERO_FLOATING_CARDS.map((card) => {
+            const IconComp = card.icon;
+            const translateX = mousePos.x * card.factor;
+            const translateY = mousePos.y * card.factor;
+
+            return (
+              <div
+                key={card.id}
+                style={{
+                  transform: `translate3d(${translateX}px, ${translateY}px, 0)`,
+                  perspective: '1000px',
+                }}
+                className={`absolute ${card.posClass} z-20 transition-transform duration-200 ease-out`}
+              >
+                <div className={`hero-glass-card ${card.floatClass} p-3 rounded-2xl flex items-center gap-3 w-52 sm:w-56 shadow-2xl`}>
+                  <div className={`w-9 h-9 rounded-xl ${card.badgeBg} text-white flex items-center justify-center shrink-0 shadow-md`}>
+                    <IconComp className="w-4 h-4" />
+                  </div>
+                  <div className="truncate text-left">
+                    <h4 className="text-xs font-heading font-extrabold text-[#FBF7F0] truncate">
+                      {card.title}
+                    </h4>
+                    <div className="flex items-center gap-2 text-[10px] text-[#D6C7B2] font-semibold mt-0.5">
+                      <span className="text-[#E8A33D] font-bold">{card.rating}</span>
+                      <span>• {card.location}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Central Hero Text & Headline */}
         <div className="relative max-w-4xl mx-auto text-center space-y-7 z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFFDF9]/10 border border-[#E8A33D]/40 text-[#E8A33D] text-xs font-bold uppercase tracking-wider backdrop-blur-md">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFFDF9]/10 border border-[#E8A33D]/40 text-[#E8A33D] text-xs font-bold uppercase tracking-wider backdrop-blur-md animate-in fade-in duration-500">
             <MapPin className="w-3.5 h-3.5 fill-[#E8A33D] text-[#2B2621]" />
             <span>Living Neighborhood Map</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-heading font-extrabold tracking-tight text-[#FBF7F0] leading-[1.15]">
+          <h1 className="text-4xl sm:text-6xl font-heading font-extrabold tracking-tight text-[#FBF7F0] leading-[1.15] animate-in fade-in slide-in-from-bottom-3 duration-700">
             Neighborhood Professionals <br />
             <span className="font-serif-accent italic text-[#C6511F] font-normal">
               Brought to Life on a Map
             </span>
           </h1>
 
-          <p className="max-w-2xl mx-auto text-base sm:text-lg text-[#D6C7B2] font-normal leading-relaxed">
+          <p className="max-w-2xl mx-auto text-base sm:text-lg text-[#D6C7B2] font-normal leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000">
             Discover verified plumbers, electricians, tutors, cleaners, and home tiffin chefs right around your block. Real-time Leaflet map discovery with zero middleman markups.
           </p>
 
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-6 text-xs font-bold text-[#E8A33D]">
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-6 text-xs font-bold text-[#E8A33D] animate-in fade-in slide-in-from-bottom-5 duration-1000">
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-[#5C7A5C]" />
               <span className="text-[#FBF7F0]">Verified Credentials</span>
@@ -151,7 +265,7 @@ const LandingPage = () => {
       </section>
 
       {/* Floating Command Bar Search Box (sitting at section boundary) */}
-      <div className="max-w-4xl mx-auto px-4 w-full -mt-14 relative z-30">
+      <div className="max-w-4xl mx-auto px-4 w-full -mt-14 relative z-30 animate-in fade-in slide-in-from-bottom-6 duration-1000">
         <form
           onSubmit={handleSearch}
           className="bg-[#FFFDF9] p-3 rounded-full shadow-2xl border-2 border-[#E8DFC9] flex flex-col sm:flex-row items-center gap-2 text-[#2B2621]"

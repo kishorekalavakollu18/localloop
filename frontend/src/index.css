@@ -55,10 +55,100 @@
 .map-bg-pattern {
   background-color: #2B2621;
   background-image: 
-    radial-gradient(rgba(232, 163, 61, 0.15) 1.5px, transparent 1.5px),
-    linear-gradient(to right, rgba(198, 81, 31, 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(198, 81, 31, 0.08) 1px, transparent 1px);
-  background-size: 32px 32px, 64px 64px, 64px 64px;
+    radial-gradient(rgba(232, 163, 61, 0.22) 1.5px, transparent 1.5px),
+    linear-gradient(to right, rgba(198, 81, 31, 0.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(198, 81, 31, 0.09) 1px, transparent 1px);
+  background-size: 36px 36px, 72px 72px, 72px 72px;
+}
+
+/* Radar Ping Radar Ring Animation */
+@keyframes radar-ping {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+.animate-radar-ping {
+  animation: radar-ping 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+  will-change: transform, opacity;
+}
+
+/* Discovery Orbit Ring & Traveling Dot */
+@keyframes orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-orbit {
+  animation: orbit-spin 20s linear infinite;
+  will-change: transform;
+}
+
+/* 3D Motion Floating Hero Panels */
+@keyframes float-card-1 {
+  0%, 100% {
+    transform: translateY(0px) rotateY(-8deg) rotateX(4deg);
+  }
+  50% {
+    transform: translateY(-14px) rotateY(-5deg) rotateX(2deg);
+  }
+}
+
+@keyframes float-card-2 {
+  0%, 100% {
+    transform: translateY(0px) rotateY(8deg) rotateX(-4deg);
+  }
+  50% {
+    transform: translateY(-12px) rotateY(5deg) rotateX(-2deg);
+  }
+}
+
+@keyframes float-card-3 {
+  0%, 100% {
+    transform: translateY(0px) rotateY(-6deg) rotateX(-5deg);
+  }
+  50% {
+    transform: translateY(-16px) rotateY(-3deg) rotateX(-3deg);
+  }
+}
+
+.animate-float-1 {
+  animation: float-card-1 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-float-2 {
+  animation: float-card-2 8s ease-in-out infinite 1s;
+  will-change: transform;
+}
+
+.animate-float-3 {
+  animation: float-card-3 7.5s ease-in-out infinite 2s;
+  will-change: transform;
+}
+
+/* Dark Glassmorphism for 3D Hero Cards */
+.hero-glass-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.hero-glass-card:hover {
+  border-color: rgba(232, 163, 61, 0.6);
+  box-shadow: 0 25px 50px -12px rgba(198, 81, 31, 0.4);
 }
 
 /* Leaflet Container & Markers */
@@ -118,4 +208,15 @@
 .sticky-note:hover {
   transform: translateY(-4px) rotate(0deg) !important;
   box-shadow: 0 12px 28px -6px rgba(43, 38, 33, 0.15);
+}
+
+/* Accessibility: Disable float / 3D tilt for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-1,
+  .animate-float-2,
+  .animate-float-3,
+  .animate-orbit,
+  .animate-radar-ping {
+    animation: none !important;
+  }
 }
