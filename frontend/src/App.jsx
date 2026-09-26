@@ -15,6 +15,7 @@ import RegisterPage from './pages/RegisterPage';
 import CustomerDashboard from './pages/CustomerDashboard';
 import ProviderDashboard from './pages/ProviderDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import LiveTrackingPage from './pages/LiveTrackingPage';
 
 // Scroll to top upon page navigation
 const ScrollToTop = () => {
@@ -68,6 +69,16 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Swiggy-Style Live Real-Time GPS Tracking Route */}
+              <Route
+                path="/track/:bookingId"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'provider', 'admin']}>
+                    <LiveTrackingPage />
                   </ProtectedRoute>
                 }
               />

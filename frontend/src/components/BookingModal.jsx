@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { bookingService } from '../services/api';
@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   Loader2,
   CreditCard,
+  MapPin,
+  Navigation,
 } from 'lucide-react';
 
 const BookingModal = ({ provider, isOpen, onClose }) => {
@@ -24,10 +26,24 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
   });
 
   const [selectedSlot, setSelectedSlot] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerPincode, setCustomerPincode] = useState('');
+  const [customerCoordinates, setCustomerCoordinates] = useState(null);
+  const [detectingGps, setDetectingGps] = useState(false);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      if (user.address && !customerAddress) setCustomerAddress(user.address);
+      if (user.pincode && !customerPincode) setCustomerPincode(user.pincode);
+      if (user.location?.coordinates?.length === 2 && !customerCoordinates) {
+        setCustomerCoordinates(user.location.coordinates);
+      }
+    }
+  }, [user]);
 
   if (!isOpen || !provider) return null;
 
@@ -41,6 +57,31 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
         )
       : ['09:00 - 12:00', '14:00 - 17:00', '18:00 - 20:00'];
 
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setDetectingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setCustomerCoordinates([longitude, latitude]);
+        if (!customerAddress) {
+          setCustomerAddress(`Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
+        }
+        setDetectingGps(false);
+      },
+      (err) => {
+        console.warn('Geolocation error:', err);
+        setError('Could not access device GPS. Please enter your address & PIN code manually.');
+        setDetectingGps(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -52,6 +93,11 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
 
     if (user?.role === 'provider' && provider.userId?._id === user._id) {
       setError('You cannot book your own service.');
+      return;
+    }
+
+    if (!customerAddress && !customerPincode && !customerCoordinates) {
+      setError('Please provide your service delivery address or PIN code.');
       return;
     }
 
@@ -68,10 +114,13 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
     setLoading(true);
 
     try {
-      await bookingService.create({
+      const res = await bookingService.create({
         providerId: provider._id,
         serviceDate,
         slot: selectedSlot,
+        customerAddress,
+        customerPincode,
+        customerCoordinates,
         notes,
       });
 
@@ -79,7 +128,11 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
       setTimeout(() => {
         setSuccess(false);
         onClose();
-        navigate('/customer/dashboard');
+        if (res?.booking?._id) {
+          navigate(`/track/${res.booking._id}`);
+        } else {
+          navigate('/customer/dashboard');
+        }
       }, 1500);
     } catch (err) {
       setError(err.message || 'Failed to submit booking request.');
@@ -126,6 +179,63 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
                 <span>{error}</span>
               </div>
             )}
+
+            {/* Customer Location & PIN code */}
+            <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-[#E8DFC9] space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-[#C6511F]" />
+                  Service Delivery Location
+                </label>
+                <button
+                  type="button"
+                  onClick={handleDetectLocation}
+                  disabled={detectingGps}
+                  className="flex items-center gap-1 text-[11px] font-bold text-[#C6511F] hover:text-[#9E3F16] bg-white px-2.5 py-1 rounded-lg border border-[#E8DFC9] shadow-2xs hover:shadow-xs transition-all disabled:opacity-60"
+                >
+                  {detectingGps ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Navigation className="w-3 h-3" />
+                  )}
+                  <span>{detectingGps ? 'Locating...' : 'Use My GPS'}</span>
+                </button>
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  value={customerAddress}
+                  onChange={(e) => setCustomerAddress(e.target.value)}
+                  placeholder="House/Flat No., Street, Landmark, Area"
+                  required
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#C6511F] focus:border-[#C6511F] text-xs font-medium text-slate-800 bg-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={customerPincode}
+                    onChange={(e) => setCustomerPincode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="PIN Code (e.g. 560038)"
+                    required
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#C6511F] focus:border-[#C6511F] text-xs font-medium text-slate-800 bg-white"
+                  />
+                </div>
+                <div className="flex items-center text-[11px] text-slate-500 font-medium px-1">
+                  {customerCoordinates ? (
+                    <span className="text-emerald-700 font-semibold flex items-center gap-1 truncate">
+                      ✓ GPS Linked ({customerCoordinates[1]?.toFixed(2)}, {customerCoordinates[0]?.toFixed(2)})
+                    </span>
+                  ) : (
+                    <span>📍 Auto-geocoded</span>
+                  )}
+                </div>
+              </div>
+            </div>
 
             {/* Date Selection */}
             <div>

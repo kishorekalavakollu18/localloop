@@ -1,12 +1,22 @@
 const Booking = require('../models/Booking');
 const Provider = require('../models/Provider');
+const User = require('../models/User');
+const { geocodeAddress, getDrivingRoute } = require('../utils/geocoder');
 
-// @desc    Create a new service booking with slot conflict check
+// @desc    Create a new service booking with customer location, geocoding & slot conflict check
 // @route   POST /api/bookings
 // @access  Private (Customer/User)
 exports.createBooking = async (req, res) => {
   try {
-    const { providerId, serviceDate, slot, notes } = req.body;
+    const {
+      providerId,
+      serviceDate,
+      slot,
+      notes,
+      customerAddress,
+      customerPincode,
+      customerCoordinates,
+    } = req.body;
 
     if (!providerId || !serviceDate || !slot) {
       return res.status(400).json({
@@ -32,7 +42,7 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Phase 3 & 5: Double-Booking Slot Conflict Check
+    // Double-Booking Slot Conflict Check
     const targetDate = new Date(serviceDate);
     const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
     const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
@@ -41,7 +51,7 @@ exports.createBooking = async (req, res) => {
       providerId,
       slot,
       serviceDate: { $gte: startOfDay, $lte: endOfDay },
-      status: { $in: ['pending', 'confirmed'] },
+      status: { $in: ['pending', 'confirmed', 'in_progress'] },
     });
 
     if (existingConflict) {
@@ -51,6 +61,51 @@ exports.createBooking = async (req, res) => {
       });
     }
 
+    // Resolve Customer Location (GPS Coordinates + Address + PIN code)
+    let resolvedCoords = [77.5946, 12.9716]; // Default fallback Bengaluru center
+    let finalAddress = customerAddress || req.user.address || '';
+    let finalPincode = customerPincode || req.user.pincode || '';
+
+    if (
+      Array.isArray(customerCoordinates) &&
+      customerCoordinates.length === 2 &&
+      !isNaN(customerCoordinates[0]) &&
+      !isNaN(customerCoordinates[1])
+    ) {
+      resolvedCoords = [parseFloat(customerCoordinates[0]), parseFloat(customerCoordinates[1])];
+    } else if (finalAddress || finalPincode) {
+      const geo = await geocodeAddress(finalAddress, finalPincode);
+      resolvedCoords = geo.coordinates;
+      if (!finalAddress) finalAddress = geo.formattedAddress;
+      if (!finalPincode) finalPincode = geo.pincode;
+    } else if (req.user.location?.coordinates?.length === 2) {
+      resolvedCoords = req.user.location.coordinates;
+    }
+
+    // Update user's profile with address/location if not present
+    if ((!req.user.address && finalAddress) || (!req.user.pincode && finalPincode)) {
+      await User.findByIdAndUpdate(req.user._id, {
+        address: finalAddress,
+        pincode: finalPincode,
+        location: { type: 'Point', coordinates: resolvedCoords },
+      });
+    }
+
+    // Calculate initial driving distance and ETA from provider to customer
+    let initialDistanceKm = 0;
+    let initialEtaMinutes = 15;
+    let initialPolyline = [];
+
+    const providerCoords = provider.currentLocation?.coordinates || provider.location?.coordinates;
+    if (providerCoords && providerCoords.length === 2) {
+      const routeInfo = await getDrivingRoute(providerCoords, resolvedCoords);
+      if (routeInfo) {
+        initialDistanceKm = routeInfo.distanceKm;
+        initialEtaMinutes = routeInfo.etaMinutes;
+        initialPolyline = routeInfo.polyline;
+      }
+    }
+
     const booking = await Booking.create({
       customerId: req.user._id,
       providerId,
@@ -58,11 +113,29 @@ exports.createBooking = async (req, res) => {
       slot,
       notes: notes || '',
       status: 'pending',
+      customerAddress: finalAddress,
+      customerPincode: finalPincode,
+      customerLocation: {
+        type: 'Point',
+        coordinates: resolvedCoords,
+      },
+      liveTracking: {
+        isTrackingActive: false,
+        currentProviderLocation: {
+          type: 'Point',
+          coordinates: providerCoords || resolvedCoords,
+        },
+        heading: 0,
+        speed: 0,
+        distanceRemainingKm: initialDistanceKm,
+        etaMinutes: initialEtaMinutes,
+        routePolyline: initialPolyline,
+      },
     });
 
     const populatedBooking = await Booking.findById(booking._id)
-      .populate('providerId', 'businessName category address pricing images userId')
-      .populate('customerId', 'name email phone');
+      .populate('providerId', 'businessName category address pincode pricing images rating phone isOnline location userId')
+      .populate('customerId', 'name email phone address pincode location');
 
     // Real-time Socket.io notification emit to provider & customer
     const io = req.app.get('io');
@@ -231,11 +304,16 @@ exports.updateBookingStatus = async (req, res) => {
     }
 
     booking.status = status;
+    if (status === 'completed' || status === 'cancelled') {
+      if (booking.liveTracking) {
+        booking.liveTracking.isTrackingActive = false;
+      }
+    }
     await booking.save();
 
     const updatedBooking = await Booking.findById(booking._id)
-      .populate('providerId', 'businessName category address pricing images userId')
-      .populate('customerId', 'name email phone');
+      .populate('providerId', 'businessName category address pincode pricing images rating phone isOnline location userId')
+      .populate('customerId', 'name email phone address pincode location');
 
     // Real-time notification emit via Socket.io
     const io = req.app.get('io');
@@ -255,6 +333,15 @@ exports.updateBookingStatus = async (req, res) => {
         status,
         booking: updatedBooking,
       });
+
+      // Broadcast to tracking room if service is finished
+      if (status === 'completed' || status === 'cancelled') {
+        io.to(`tracking_${booking._id}`).emit('tracking_stopped', {
+          bookingId: booking._id,
+          status,
+          message: `Service has been marked ${status}. Live GPS tracking stopped.`,
+        });
+      }
 
       if (customerUserId) {
         io.emit(`customer_notifications_${customerUserId}`, {
@@ -286,5 +373,277 @@ exports.updateBookingStatus = async (req, res) => {
       success: false,
       message: error.message || 'Server error updating booking status',
     });
+  }
+};
+
+// @desc    Get booking details by ID
+// @route   GET /api/bookings/:id
+// @access  Private (Customer, Provider, or Admin)
+exports.getBookingById = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('providerId', 'businessName category address pincode pricing images rating phone isOnline location userId')
+      .populate('customerId', 'name email phone address pincode location');
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const isProvider = booking.providerId?.userId?.toString() === req.user._id.toString();
+    const isCustomer = booking.customerId?._id?.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isProvider && !isCustomer && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Not authorized to view this booking' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      booking,
+    });
+  } catch (error) {
+    console.error('Error fetching booking by ID:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Start live GPS tracking session for a booking
+// @route   POST /api/bookings/:id/start-tracking
+// @access  Private (Assigned Provider only)
+exports.startTracking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('providerId');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const isProvider = booking.providerId?.userId?.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+    if (!isProvider && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Only the assigned provider can start GPS tracking' });
+    }
+
+    const { coordinates } = req.body;
+    let providerCoords = coordinates;
+
+    if (!providerCoords || !Array.isArray(providerCoords) || providerCoords.length !== 2) {
+      providerCoords = booking.providerId.currentLocation?.coordinates || booking.providerId.location?.coordinates || [77.5946, 12.9716];
+    } else {
+      providerCoords = [parseFloat(providerCoords[0]), parseFloat(providerCoords[1])];
+    }
+
+    // Set tracking active and status to in_progress
+    booking.liveTracking.isTrackingActive = true;
+    booking.liveTracking.lastUpdated = new Date();
+    booking.liveTracking.currentProviderLocation = {
+      type: 'Point',
+      coordinates: providerCoords,
+    };
+    if (booking.status === 'confirmed' || booking.status === 'pending') {
+      booking.status = 'in_progress';
+    }
+
+    // Calculate initial route if customer coordinates exist
+    if (booking.customerLocation?.coordinates?.length === 2) {
+      const routeInfo = await getDrivingRoute(providerCoords, booking.customerLocation.coordinates);
+      if (routeInfo) {
+        booking.liveTracking.distanceRemainingKm = routeInfo.distanceKm;
+        booking.liveTracking.etaMinutes = routeInfo.etaMinutes;
+        booking.liveTracking.routePolyline = routeInfo.polyline;
+      }
+    }
+
+    await booking.save();
+
+    const populated = await Booking.findById(booking._id)
+      .populate('providerId', 'businessName category address pincode pricing images rating phone isOnline location userId')
+      .populate('customerId', 'name email phone address pincode location');
+
+    // Socket.io broadcast to tracking room
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`tracking_${booking._id}`).emit('tracking_started', {
+        bookingId: booking._id,
+        liveTracking: populated.liveTracking,
+        status: populated.status,
+      });
+      io.emit(`booking_status_${booking._id}`, {
+        status: populated.status,
+        booking: populated,
+      });
+      if (populated.customerId?._id) {
+        io.emit(`customer_notifications_${populated.customerId._id.toString()}`, {
+          type: 'provider_on_the_way',
+          message: `🚗 ${populated.providerId.businessName} has started live GPS navigation and is heading to your location!`,
+          booking: populated,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Live GPS tracking started',
+      booking: populated,
+    });
+  } catch (error) {
+    console.error('Error starting live tracking:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update live GPS coordinates for an active booking
+// @route   PUT /api/bookings/:id/live-location
+// @access  Private (Assigned Provider only)
+exports.updateLiveLocation = async (req, res) => {
+  try {
+    const { coordinates, heading, speed } = req.body;
+
+    if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
+      return res.status(400).json({ success: false, message: 'Invalid coordinates [lng, lat]' });
+    }
+
+    const booking = await Booking.findById(req.params.id).populate('providerId');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const isProvider = booking.providerId?.userId?.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+    if (!isProvider && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Only the assigned provider can update live GPS location' });
+    }
+
+    const lng = parseFloat(coordinates[0]);
+    const lat = parseFloat(coordinates[1]);
+    const newCoords = [lng, lat];
+
+    booking.liveTracking.isTrackingActive = true;
+    booking.liveTracking.currentProviderLocation = {
+      type: 'Point',
+      coordinates: newCoords,
+    };
+    booking.liveTracking.heading = Number(heading) || 0;
+    booking.liveTracking.speed = Number(speed) || 0;
+    booking.liveTracking.lastUpdated = new Date();
+
+    // Dynamically update road route, distance remaining and ETA
+    if (booking.customerLocation?.coordinates?.length === 2) {
+      const routeInfo = await getDrivingRoute(newCoords, booking.customerLocation.coordinates);
+      if (routeInfo) {
+        booking.liveTracking.distanceRemainingKm = routeInfo.distanceKm;
+        booking.liveTracking.etaMinutes = routeInfo.etaMinutes;
+        booking.liveTracking.routePolyline = routeInfo.polyline;
+      }
+    }
+
+    await booking.save();
+
+    // Broadcast live location to connected room without customer needing to refresh
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`tracking_${booking._id}`).emit('provider_location_changed', {
+        bookingId: booking._id,
+        coordinates: newCoords,
+        heading: booking.liveTracking.heading,
+        speed: booking.liveTracking.speed,
+        distanceRemainingKm: booking.liveTracking.distanceRemainingKm,
+        etaMinutes: booking.liveTracking.etaMinutes,
+        routePolyline: booking.liveTracking.routePolyline,
+        lastUpdated: booking.liveTracking.lastUpdated,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      liveTracking: booking.liveTracking,
+    });
+  } catch (error) {
+    console.error('Error updating live location:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Stop live GPS tracking session for a booking
+// @route   POST /api/bookings/:id/stop-tracking
+// @access  Private (Assigned Provider only)
+exports.stopTracking = async (req, res) => {
+  try {
+    const { markCompleted } = req.body;
+    const booking = await Booking.findById(req.params.id).populate('providerId');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const isProvider = booking.providerId?.userId?.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+    if (!isProvider && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Only the assigned provider can stop GPS tracking' });
+    }
+
+    booking.liveTracking.isTrackingActive = false;
+    if (markCompleted) {
+      booking.status = 'completed';
+    }
+    await booking.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`tracking_${booking._id}`).emit('tracking_stopped', {
+        bookingId: booking._id,
+        status: booking.status,
+        message: markCompleted ? 'Service completed! GPS tracking ended.' : 'Provider stopped navigation tracking.',
+      });
+      io.emit(`booking_status_${booking._id}`, {
+        status: booking.status,
+        booking,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'GPS tracking stopped successfully',
+      status: booking.status,
+    });
+  } catch (error) {
+    console.error('Error stopping tracking:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get OSRM driving route between provider and customer
+// @route   GET /api/bookings/:id/route
+// @access  Private (Customer, Provider, or Admin)
+exports.getBookingRoute = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('providerId');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const providerCoords =
+      booking.liveTracking?.currentProviderLocation?.coordinates?.length === 2
+        ? booking.liveTracking.currentProviderLocation.coordinates
+        : booking.providerId?.currentLocation?.coordinates || booking.providerId?.location?.coordinates;
+
+    const customerCoords =
+      booking.customerLocation?.coordinates?.length === 2
+        ? booking.customerLocation.coordinates
+        : [77.5946, 12.9716];
+
+    if (!providerCoords || providerCoords.length !== 2) {
+      return res.status(400).json({ success: false, message: 'Provider coordinates not found' });
+    }
+
+    const routeInfo = await getDrivingRoute(providerCoords, customerCoords);
+
+    return res.status(200).json({
+      success: true,
+      route: routeInfo,
+      providerCoordinates: providerCoords,
+      customerCoordinates: customerCoords,
+    });
+  } catch (error) {
+    console.error('Error calculating booking route:', error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

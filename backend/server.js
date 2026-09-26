@@ -35,6 +35,10 @@ const io = new Server(server, {
 
 app.set('io', io);
 
+const jwt = require('jsonwebtoken');
+const Booking = require('./src/models/Booking');
+const { getDrivingRoute } = require('./src/utils/geocoder');
+
 // Socket.io Real-Time Connection Listener
 io.on('connection', (socket) => {
   socket.on('join_room', (roomId) => {
@@ -45,6 +49,98 @@ io.on('connection', (socket) => {
     if (data && data.bookingId) {
       io.to(data.bookingId.toString()).emit('new_message', data);
     }
+  });
+
+  // Swiggy-Style Live GPS Tracking Rooms & Real-Time Moving Marker
+  socket.on('join_tracking_room', (bookingId) => {
+    if (bookingId) {
+      socket.join(`tracking_${bookingId}`);
+    }
+  });
+
+  socket.on('leave_tracking_room', (bookingId) => {
+    if (bookingId) {
+      socket.leave(`tracking_${bookingId}`);
+    }
+  });
+
+  // Real-time device GPS updates streamed from provider
+  socket.on('provider_location_update', async (data) => {
+    try {
+      const { bookingId, coordinates, heading, speed, token } = data || {};
+      if (!bookingId || !coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
+        return;
+      }
+
+      // Security: Validate JWT token and authorize assigned provider
+      let userId = null;
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          userId = decoded.id;
+        } catch (e) {
+          socket.emit('tracking_error', { message: 'Unauthorized GPS streaming: Invalid token' });
+          return;
+        }
+      }
+
+      const booking = await Booking.findById(bookingId).populate('providerId');
+      if (!booking) return;
+
+      if (userId && booking.providerId?.userId?.toString() !== userId.toString()) {
+        socket.emit('tracking_error', { message: 'Unauthorized: Only the assigned provider can stream GPS' });
+        return;
+      }
+
+      const lng = parseFloat(coordinates[0]);
+      const lat = parseFloat(coordinates[1]);
+      const newCoords = [lng, lat];
+
+      booking.liveTracking.isTrackingActive = true;
+      booking.liveTracking.currentProviderLocation = {
+        type: 'Point',
+        coordinates: newCoords,
+      };
+      booking.liveTracking.heading = Number(heading) || 0;
+      booking.liveTracking.speed = Number(speed) || 0;
+      booking.liveTracking.lastUpdated = new Date();
+
+      if (booking.customerLocation?.coordinates?.length === 2) {
+        const routeInfo = await getDrivingRoute(newCoords, booking.customerLocation.coordinates);
+        if (routeInfo) {
+          booking.liveTracking.distanceRemainingKm = routeInfo.distanceKm;
+          booking.liveTracking.etaMinutes = routeInfo.etaMinutes;
+          booking.liveTracking.routePolyline = routeInfo.polyline;
+        }
+      }
+
+      await booking.save();
+
+      // Emit to all users watching this booking's tracking room
+      io.to(`tracking_${bookingId}`).emit('provider_location_changed', {
+        bookingId,
+        coordinates: newCoords,
+        heading: booking.liveTracking.heading,
+        speed: booking.liveTracking.speed,
+        distanceRemainingKm: booking.liveTracking.distanceRemainingKm,
+        etaMinutes: booking.liveTracking.etaMinutes,
+        routePolyline: booking.liveTracking.routePolyline,
+        lastUpdated: booking.liveTracking.lastUpdated,
+      });
+    } catch (err) {
+      console.error('Socket provider_location_update error:', err.message);
+    }
+  });
+
+  socket.on('stop_tracking', async (data) => {
+    try {
+      const { bookingId } = data || {};
+      if (!bookingId) return;
+      io.to(`tracking_${bookingId}`).emit('tracking_stopped', {
+        bookingId,
+        message: 'Live tracking stopped.',
+      });
+    } catch (err) {}
   });
 
   socket.on('disconnect', () => {});

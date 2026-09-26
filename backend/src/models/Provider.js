@@ -44,6 +44,24 @@ const providerSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide a physical address/location description'],
     },
+    pincode: {
+      type: String,
+      default: '',
+    },
+    isOnline: {
+      type: Boolean,
+      default: true,
+    },
+    currentLocation: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point',
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+      },
+    },
     pricing: {
       type: {
         type: String,

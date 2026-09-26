@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Star,
   CheckCheck,
+  Navigation,
 } from 'lucide-react';
 
 const CustomerDashboard = () => {
@@ -295,9 +296,20 @@ const CustomerDashboard = () => {
                     </div>
                   </div>
 
+                  {/* Delivery Destination Address */}
+                  {booking.customerAddress && (
+                    <div className="text-xs text-slate-700 bg-amber-50/70 border border-amber-200/80 p-2.5 rounded-xl flex items-center gap-2">
+                      <MapPin className="w-3.5 h-3.5 text-[#C6511F] shrink-0" />
+                      <span>
+                        <strong>Delivery Address:</strong> {booking.customerAddress}{' '}
+                        {booking.customerPincode && `(PIN: ${booking.customerPincode})`}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Notes if provided */}
                   {booking.notes && (
-                    <p className="text-xs text-slate-600 bg-amber-50/50 p-2.5 rounded-xl border border-amber-100">
+                    <p className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                       <span className="font-bold text-slate-700">Problem Notes:</span> {booking.notes}
                     </p>
                   )}
@@ -316,6 +328,17 @@ const CustomerDashboard = () => {
                     )}
 
                     <div className="flex items-center gap-2">
+                      {/* Swiggy-Style Live Tracking Button */}
+                      {(booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'pending') && (
+                        <Link
+                          to={`/track/${booking._id}`}
+                          className="px-3.5 py-2 bg-[#C6511F] hover:bg-[#B04316] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                        >
+                          <Navigation className="w-3.5 h-3.5" />
+                          <span>Live Track 📍</span>
+                        </Link>
+                      )}
+
                       <button
                         onClick={() => {
                           setChatBooking(booking);

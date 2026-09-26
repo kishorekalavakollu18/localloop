@@ -33,6 +33,25 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    address: {
+      type: String,
+      default: '',
+    },
+    pincode: {
+      type: String,
+      default: '',
+    },
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point',
+      },
+      coordinates: {
+        type: [Number], // [lng, lat]
+        default: [77.5946, 12.9716],
+      },
+    },
     isBanned: {
       type: Boolean,
       default: false,

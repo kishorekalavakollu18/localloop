@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Provider = require('../models/Provider');
+const { geocodeAddress } = require('../utils/geocoder');
 
 // Helper to generate JWT token
 const generateToken = (id) => {
@@ -154,6 +155,9 @@ exports.getMe = async (req, res) => {
         email: user.email,
         role: user.role,
         phone: user.phone,
+        address: user.address || '',
+        pincode: user.pincode || '',
+        location: user.location || { type: 'Point', coordinates: [77.5946, 12.9716] },
         createdAt: user.createdAt,
       },
       provider: providerProfile,
@@ -163,6 +167,66 @@ exports.getMe = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || 'Server error fetching user profile',
+    });
+  }
+};
+
+// @desc    Update customer location, address, and PIN code with geocoding
+// @route   PUT /api/auth/location
+// @access  Private
+exports.updateLocation = async (req, res) => {
+  try {
+    const { address, pincode, coordinates } = req.body;
+    let finalCoords = coordinates;
+
+    if (!finalCoords || !Array.isArray(finalCoords) || finalCoords.length !== 2) {
+      const geo = await geocodeAddress(address, pincode);
+      finalCoords = geo.coordinates;
+    }
+
+    const updateData = {};
+    if (address !== undefined) updateData.address = address;
+    if (pincode !== undefined) updateData.pincode = pincode;
+    if (finalCoords) {
+      updateData.location = {
+        type: 'Point',
+        coordinates: [parseFloat(finalCoords[0]), parseFloat(finalCoords[1])],
+      };
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(req.user._id, updateData, {
+      new: true,
+    }).select('-password');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Location updated successfully',
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error('Update location error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Server error updating location',
+    });
+  }
+};
+
+// @desc    Geocode an address & PIN code
+// @route   POST /api/auth/geocode
+// @access  Public
+exports.geocodeAddressHandler = async (req, res) => {
+  try {
+    const { address, pincode } = req.body;
+    const geo = await geocodeAddress(address, pincode);
+    return res.status(200).json({
+      success: true,
+      data: geo,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error geocoding address',
     });
   }
 };

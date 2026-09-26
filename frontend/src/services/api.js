@@ -64,6 +64,14 @@ export const authService = {
     const res = await api.get('/auth/me');
     return res.data;
   },
+  updateLocation: async (locationData) => {
+    const res = await api.put('/auth/location', locationData);
+    return res.data;
+  },
+  geocode: async (addressData) => {
+    const res = await api.post('/auth/geocode', addressData);
+    return res.data;
+  },
 };
 
 export const providerService = {
@@ -85,6 +93,14 @@ export const providerService = {
   },
   update: async (id, providerData) => {
     const res = await api.put(`/providers/${id}`, providerData);
+    return res.data;
+  },
+  toggleOnline: async (id, isOnline) => {
+    const res = await api.put(`/providers/${id}/toggle-online`, { isOnline });
+    return res.data;
+  },
+  updateLocation: async (id, coordinates) => {
+    const res = await api.put(`/providers/${id}/location`, { coordinates });
     return res.data;
   },
   uploadImage: async (id, file) => {
@@ -110,6 +126,10 @@ export const bookingService = {
     const res = await api.post('/bookings', bookingData);
     return res.data;
   },
+  getById: async (bookingId) => {
+    const res = await api.get(`/bookings/${bookingId}`);
+    return res.data;
+  },
   getCustomerBookings: async (customerId) => {
     const res = await api.get(`/bookings/customer/${customerId}`);
     return res.data;
@@ -120,6 +140,22 @@ export const bookingService = {
   },
   updateStatus: async (bookingId, status) => {
     const res = await api.put(`/bookings/${bookingId}/status`, { status });
+    return res.data;
+  },
+  startTracking: async (bookingId, coordinates) => {
+    const res = await api.post(`/bookings/${bookingId}/start-tracking`, { coordinates });
+    return res.data;
+  },
+  updateLiveLocation: async (bookingId, trackingData) => {
+    const res = await api.put(`/bookings/${bookingId}/live-location`, trackingData);
+    return res.data;
+  },
+  stopTracking: async (bookingId, markCompleted = false) => {
+    const res = await api.post(`/bookings/${bookingId}/stop-tracking`, { markCompleted });
+    return res.data;
+  },
+  getRoute: async (bookingId) => {
+    const res = await api.get(`/bookings/${bookingId}/route`);
     return res.data;
   },
 };

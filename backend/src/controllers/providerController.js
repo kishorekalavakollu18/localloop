@@ -227,6 +227,7 @@ exports.getNearbyProviders = async (req, res) => {
       providers = providers.map((p) => {
         const distKm = metersToKm(p.distanceMeters);
         const travelFee = calculateTravelFee(distKm);
+        const etaMinutes = Math.max(5, Math.round((distKm / 25) * 60) + 5);
         const relevanceScore = Math.round(
           (p.rating?.avg || 0) * 20 + Math.max(0, 100 - distKm * 2) + (p.rating?.count || 0) * 0.5
         );
@@ -234,8 +235,11 @@ exports.getNearbyProviders = async (req, res) => {
         return {
           ...p,
           distanceKm: distKm,
+          etaMinutes,
           travelFee,
           relevanceScore,
+          isOnline: p.isOnline !== false,
+          pincode: p.pincode || (p.address ? p.address.match(/\b[1-9][0-9]{5}\b/)?.[0] : ''),
         };
       });
 
@@ -520,5 +524,79 @@ exports.uploadVerificationDoc = async (req, res) => {
       success: false,
       message: error.message || 'Server error uploading document',
     });
+  }
+};
+
+// @desc    Toggle provider online/offline status
+// @route   PUT /api/providers/:id/toggle-online
+// @access  Private (Provider only)
+exports.toggleOnline = async (req, res) => {
+  try {
+    const provider = await Provider.findById(req.params.id);
+    if (!provider) {
+      return res.status(404).json({ success: false, message: 'Provider not found' });
+    }
+
+    if (provider.userId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to update this status' });
+    }
+
+    const { isOnline } = req.body;
+    provider.isOnline = typeof isOnline === 'boolean' ? isOnline : !provider.isOnline;
+    await provider.save();
+
+    // Broadcast online status change to connected clients
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('provider_status_changed', {
+        providerId: provider._id,
+        isOnline: provider.isOnline,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Provider is now ${provider.isOnline ? 'Online' : 'Offline'}`,
+      isOnline: provider.isOnline,
+      provider,
+    });
+  } catch (error) {
+    console.error('Error toggling online status:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update provider live location
+// @route   PUT /api/providers/:id/location
+// @access  Private (Provider only)
+exports.updateProviderLocation = async (req, res) => {
+  try {
+    const { coordinates } = req.body;
+    if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
+      return res.status(400).json({ success: false, message: 'Invalid coordinates [lng, lat]' });
+    }
+
+    const provider = await Provider.findById(req.params.id);
+    if (!provider) {
+      return res.status(404).json({ success: false, message: 'Provider not found' });
+    }
+
+    if (provider.userId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to update location' });
+    }
+
+    const lng = parseFloat(coordinates[0]);
+    const lat = parseFloat(coordinates[1]);
+    provider.currentLocation = { type: 'Point', coordinates: [lng, lat] };
+    await provider.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Location updated',
+      currentLocation: provider.currentLocation,
+    });
+  } catch (error) {
+    console.error('Error updating provider location:', error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -153,25 +153,43 @@ npm run dev
 
 ---
 
-## 📡 REST API Reference
+## 📡 REST & Socket.io API Reference
 
-### Authentication
+### Real-Time Live GPS Tracking & Routing (Swiggy-Style)
+- `POST /api/bookings/:id/start-tracking` *(Protected, Assigned Provider)* — Start live GPS tracking session for a service booking
+- `PUT /api/bookings/:id/live-location` *(Protected, Assigned Provider)* — Stream live device coordinates `[lng, lat]`, speed, heading, and recalculate road route & ETA
+- `POST /api/bookings/:id/stop-tracking` *(Protected, Assigned Provider)* — Stop GPS tracking and optionally mark service as completed
+- `GET /api/bookings/:id/route` *(Protected)* — Compute actual driving road route, polyline coordinates, distance (km), and dynamic ETA (mins) via OSRM
+- `PUT /api/providers/:id/toggle-online` *(Protected, Owner)* — Toggle Online/Offline availability status with live Socket.io broadcast
+- `PUT /api/providers/:id/location` *(Protected, Owner)* — Update provider base GPS coordinates
+- `PUT /api/auth/location` *(Protected)* — Update customer delivery address & PIN code with automatic geocoding
+- `POST /api/auth/geocode` — Geocode Indian PIN code or street address to `[lng, lat]` coordinates
+
+### Socket.io Events
+- `join_tracking_room` (`bookingId`) — Customer & provider join booking tracking room
+- `provider_location_update` (`{ bookingId, coordinates, heading, speed, token }`) — Provider device GPS stream with authorization check
+- `provider_location_changed` (`{ coordinates, distanceRemainingKm, etaMinutes, routePolyline }`) — Broadcasts moving marker updates to customer without page refresh
+- `provider_status_changed` (`{ providerId, isOnline }`) — Real-time Online/Offline indicator broadcast
+- `tracking_stopped` (`{ bookingId, status }`) — Broadcasts when tracking ends or job completes
+
+### Authentication & Geocoding
 - `POST /api/auth/register` — Register a new customer or provider user
 - `POST /api/auth/login` — Sign in and receive JWT token + provider details
-- `GET /api/auth/me` *(Protected)* — Get current user session
+- `GET /api/auth/me` *(Protected)* — Get current user session with saved address & coordinates
 
 ### Providers
 - `POST /api/providers` *(Protected, Provider only)* — Register provider profile
-- `GET /api/providers/nearby?lat=&lng=&radius=&category=&sort=&search=` — Proximity search via MongoDB 2dsphere index
-- `GET /api/providers/:id` — Provider profile, gallery, schedule, and reviews
+- `GET /api/providers/nearby?lat=&lng=&radius=&category=&sort=&search=` — Proximity search via MongoDB 2dsphere index with distance & ETA
+- `GET /api/providers/:id` — Provider profile, gallery, schedule, online status, and reviews
 - `PUT /api/providers/:id` *(Protected, Owner only)* — Update service listing and slots
 - `POST /api/providers/:id/upload` *(Protected)* — Upload work sample images
 
 ### Bookings
-- `POST /api/bookings` *(Protected, Customer)* — Book a service date and slot
+- `POST /api/bookings` *(Protected, Customer)* — Book a service date and slot with delivery address, PIN code, and coordinates
+- `GET /api/bookings/:id` *(Protected)* — Get detailed booking status, customer location, and live tracking telemetry
 - `GET /api/bookings/customer/:customerId` *(Protected)* — Get customer bookings
 - `GET /api/bookings/provider/:providerId` *(Protected)* — Get provider bookings
-- `PUT /api/bookings/:id/status` *(Protected)* — Accept, complete, or cancel booking
+- `PUT /api/bookings/:id/status` *(Protected)* — Accept, complete, or cancel booking with automatic tracking shutdown
 
 ### Reviews
 - `POST /api/reviews` *(Protected, Customer)* — Submit star rating & review
