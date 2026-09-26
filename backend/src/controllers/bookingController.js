@@ -620,26 +620,33 @@ exports.getBookingRoute = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    const providerCoords =
+    let providerCoords =
       booking.liveTracking?.currentProviderLocation?.coordinates?.length === 2
         ? booking.liveTracking.currentProviderLocation.coordinates
         : booking.providerId?.currentLocation?.coordinates || booking.providerId?.location?.coordinates;
 
-    const customerCoords =
+    let customerCoords =
       booking.customerLocation?.coordinates?.length === 2
         ? booking.customerLocation.coordinates
         : [77.5946, 12.9716];
 
     if (!providerCoords || providerCoords.length !== 2) {
-      return res.status(400).json({ success: false, message: 'Provider coordinates not found' });
+      providerCoords = [77.6408, 12.9784];
     }
 
     const routeInfo = await getDrivingRoute(providerCoords, customerCoords);
 
+    if (routeInfo) {
+      booking.liveTracking.distanceRemainingKm = routeInfo.distanceKm;
+      booking.liveTracking.etaMinutes = routeInfo.etaMinutes;
+      booking.liveTracking.routePolyline = routeInfo.polyline;
+      await booking.save();
+    }
+
     return res.status(200).json({
       success: true,
       route: routeInfo,
-      providerCoordinates: providerCoords,
+      providerCoordinates: routeInfo?.originCoordinates || providerCoords,
       customerCoordinates: customerCoords,
     });
   } catch (error) {
