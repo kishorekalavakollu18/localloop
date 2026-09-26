@@ -1,7 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Mail, Lock, AlertCircle, Loader2, ArrowRight, UserCheck } from 'lucide-react';
+import AuthLayout from '../components/AuthLayout';
+import { 
+  MapPin, 
+  Mail, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  AlertCircle, 
+  Loader2, 
+  ArrowRight, 
+  UserCheck,
+  Check
+} from 'lucide-react';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -10,15 +22,50 @@ const LoginPage = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Field level blur validation states
+  const [touched, setTouched] = useState({ email: false, password: false });
+  const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
+
   const redirectPath = location.state?.from?.pathname || '/';
+
+  const validateEmail = (val) => {
+    if (!val) return 'Email is required';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(val)) return 'Please enter a valid email address';
+    return '';
+  };
+
+  const validatePassword = (val) => {
+    if (!val) return 'Password is required';
+    if (val.length < 6) return 'Password must be at least 6 characters';
+    return '';
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    if (field === 'email') {
+      setFieldErrors((prev) => ({ ...prev, email: validateEmail(email) }));
+    } else if (field === 'password') {
+      setFieldErrors((prev) => ({ ...prev, password: validatePassword(password) }));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Please fill in both email and password.');
+
+    const emailErr = validateEmail(email);
+    const passErr = validatePassword(password);
+    setTouched({ email: true, password: true });
+    setFieldErrors({ email: emailErr, password: passErr });
+
+    if (emailErr || passErr) {
+      setError('Please fix the errors above.');
       return;
     }
 
@@ -42,124 +89,191 @@ const LoginPage = () => {
   const handleQuickLogin = (demoEmail, demoPassword) => {
     setEmail(demoEmail);
     setPassword(demoPassword);
+    setFieldErrors({ email: '', password: '' });
+    setError('');
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 sm:p-10 rounded-3xl border border-slate-200 shadow-xl">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white mx-auto shadow-md shadow-indigo-500/30">
-            <MapPin className="w-6 h-6" />
+    <AuthLayout>
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <div className="w-12 h-12 rounded-2xl bg-terracotta flex items-center justify-center text-white mx-auto shadow-lg shadow-terracotta/30">
+          <MapPin className="w-6 h-6" />
+        </div>
+        <h2 className="text-2xl font-bold font-heading text-charcoal tracking-tight">
+          Welcome back
+        </h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Sign in to manage your appointments, bookings, or service listings
+        </p>
+      </div>
+
+      {/* Global Error Banner */}
+      {error && (
+        <div className="flex items-center gap-2.5 p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 font-semibold animate-shake">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Email Input */}
+        <div>
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/80 mb-1.5">
+            Email Address
+          </label>
+          <div className="relative">
+            <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (touched.email) setFieldErrors((prev) => ({ ...prev, email: validateEmail(e.target.value) }));
+              }}
+              onBlur={() => handleBlur('email')}
+              placeholder="name@example.com"
+              className={`w-full pl-10 pr-4 py-3 auth-input rounded-2xl border ${
+                touched.email && fieldErrors.email
+                  ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20'
+                  : 'border-slate-300/80 bg-white/70'
+              } text-sm text-charcoal placeholder:text-slate-400 font-medium`}
+            />
           </div>
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Welcome back to LocalLoop
-          </h2>
-          <p className="text-xs text-slate-500">
-            Sign in to manage your appointments, bookings, or service listings
-          </p>
+          {touched.email && fieldErrors.email && (
+            <p className="text-rose-600 text-[11px] font-semibold mt-1 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              <span>{fieldErrors.email}</span>
+            </p>
+          )}
         </div>
 
-        {error && (
-          <div className="flex items-center gap-2 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-slate-800"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+        {/* Password Input */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/80">
               Password
             </label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-slate-800"
-              />
-            </div>
+            <a href="#forgot" onClick={(e) => { e.preventDefault(); alert('Password reset link sent to your registered email.'); }} className="text-xs font-bold text-terracotta hover:underline">
+              Forgot?
+            </a>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50"
-          >
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
-            {!loading && <ArrowRight className="w-4 h-4" />}
-          </button>
-        </form>
-
-        {/* Demo Fast Logins Box */}
-        <div className="pt-4 border-t border-slate-100 space-y-2">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 text-center flex items-center justify-center gap-1">
-            <UserCheck className="w-3.5 h-3.5" /> 1-Click Demo Accounts
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div className="relative">
+            <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              required
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (touched.password) setFieldErrors((prev) => ({ ...prev, password: validatePassword(e.target.value) }));
+              }}
+              onBlur={() => handleBlur('password')}
+              placeholder="••••••••"
+              className={`w-full pl-10 pr-10 py-3 auth-input rounded-2xl border ${
+                touched.password && fieldErrors.password
+                  ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20'
+                  : 'border-slate-300/80 bg-white/70'
+              } text-sm text-charcoal placeholder:text-slate-400 font-medium`}
+            />
             <button
               type="button"
-              onClick={() => handleQuickLogin('rahul@example.com', 'password123')}
-              className="px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold text-left transition-colors"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-charcoal transition-colors p-1"
             >
-              🙋‍♂️ Customer Rahul
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('ramesh.plumbing@example.com', 'password123')}
-              className="px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-left transition-colors"
-            >
-              🔧 Plumber Ramesh
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('anil.spark@example.com', 'password123')}
-              className="px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 font-semibold text-left transition-colors"
-            >
-              ⚡ Electrician Anil
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('neha.tutor@example.com', 'password123')}
-              className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-left transition-colors"
-            >
-              📚 Tutor Neha
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
+          {touched.password && fieldErrors.password && (
+            <p className="text-rose-600 text-[11px] font-semibold mt-1 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              <span>{fieldErrors.password}</span>
+            </p>
+          )}
         </div>
 
-        <div className="text-center pt-2">
-          <p className="text-xs text-slate-500">
-            Don't have an account yet?{' '}
-            <Link to="/register" className="font-bold text-indigo-600 hover:text-indigo-700">
-              Create account →
-            </Link>
-          </p>
+        {/* Remember Me Checkbox */}
+        <div className="flex items-center justify-between pt-1">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4 text-terracotta rounded border-slate-300 focus:ring-terracotta accent-terracotta"
+            />
+            <span className="text-xs text-slate-600 font-medium">Keep me signed in</span>
+          </label>
+        </div>
+
+        {/* Terracotta Submit Button with Inline Loading Spinner */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full h-12 flex items-center justify-center gap-2 bg-terracotta hover:bg-[#a84218] text-white font-bold text-sm rounded-full shadow-lg shadow-terracotta/25 hover:shadow-terracotta/40 transition-all cursor-pointer disabled:opacity-60 mt-2"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
+              <span>Authenticating...</span>
+            </>
+          ) : (
+            <>
+              <span>Sign In</span>
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
+        </button>
+      </form>
+
+      {/* Quick 1-Click Demo Accounts */}
+      <div className="pt-4 border-t border-slate-200/80 space-y-2.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 text-center flex items-center justify-center gap-1.5">
+          <UserCheck className="w-3.5 h-3.5 text-terracotta" /> 1-Click Demo Accounts
+        </p>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => handleQuickLogin('rahul@example.com', 'password123')}
+            className="px-3 py-2 rounded-xl bg-orange-50 border border-orange-200/60 text-terracotta hover:bg-orange-100/70 font-semibold text-left transition-colors flex items-center gap-1.5"
+          >
+            <span>🙋‍♂️</span> Customer Rahul
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuickLogin('ramesh.plumbing@example.com', 'password123')}
+            className="px-3 py-2 rounded-xl bg-blue-50 border border-blue-200/60 text-blue-700 hover:bg-blue-100/70 font-semibold text-left transition-colors flex items-center gap-1.5"
+          >
+            <span>🔧</span> Plumber Ramesh
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuickLogin('anil.spark@example.com', 'password123')}
+            className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200/60 text-amber-700 hover:bg-amber-100/70 font-semibold text-left transition-colors flex items-center gap-1.5"
+          >
+            <span>⚡</span> Electrician Anil
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuickLogin('neha.tutor@example.com', 'password123')}
+            className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-700 hover:bg-emerald-100/70 font-semibold text-left transition-colors flex items-center gap-1.5"
+          >
+            <span>📚</span> Tutor Neha
+          </button>
         </div>
       </div>
-    </div>
+
+      {/* Switch to Signup Link */}
+      <div className="text-center pt-1">
+        <p className="text-xs text-slate-500 font-medium">
+          Don't have an account yet?{' '}
+          <Link to="/register" className="font-bold text-terracotta hover:underline">
+            Create account →
+          </Link>
+        </p>
+      </div>
+    </AuthLayout>
   );
 };
 

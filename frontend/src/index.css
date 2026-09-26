@@ -210,13 +210,68 @@
   box-shadow: 0 12px 28px -6px rgba(43, 38, 33, 0.15);
 }
 
+/* 3D Auth Split Screen & Glassmorphism Utilities */
+@keyframes form-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-form-entrance {
+  animation: form-slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotateY(0deg) rotateZ(0deg);
+  }
+  to {
+    transform: rotateY(360deg) rotateZ(360deg);
+  }
+}
+
+.animate-spin-3d {
+  animation: spin-slow 20s linear infinite;
+  transform-style: preserve-3d;
+}
+
+/* Glassmorphic Auth Form Card */
+.auth-glass-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(198, 81, 31, 0.12);
+  box-shadow: 0 25px 50px -12px rgba(43, 38, 33, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+}
+
+/* Smooth Floating Label Input Styles */
+.auth-input {
+  min-height: 46px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-input:focus {
+  border-color: #C6511F !important;
+  box-shadow: 0 0 0 4px rgba(198, 81, 31, 0.15) !important;
+  outline: none;
+}
+
 /* Accessibility: Disable float / 3D tilt for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .animate-float-1,
   .animate-float-2,
   .animate-float-3,
   .animate-orbit,
-  .animate-radar-ping {
+  .animate-radar-ping,
+  .animate-spin-3d,
+  .animate-form-entrance {
     animation: none !important;
+    transform: none !important;
   }
 }
+
