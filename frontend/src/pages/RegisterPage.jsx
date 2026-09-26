@@ -168,6 +168,7 @@ const RegisterPage = () => {
           businessName,
           category,
           description,
+          phone,
           address,
           coordinates,
           pricing: {
@@ -424,22 +425,41 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-semibold text-charcoal mb-1">
-                Service Address / Pincode *
-              </label>
-              <input
-                type="text"
-                required
-                value={address}
-                onChange={(e) => {
-                  setAddress(e.target.value);
-                  if (touched.address) setFieldErrors((prev) => ({ ...prev, address: validateAddress(e.target.value) }));
-                }}
-                onBlur={() => handleBlur('address')}
-                placeholder="e.g. 12th Main Road, Indiranagar, Bangalore"
-                className="w-full px-3 py-2 auth-input rounded-xl border border-slate-300/80 bg-white/80 text-xs text-charcoal font-medium"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-charcoal mb-1">
+                  Service Address / Pincode *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={address}
+                  onChange={(e) => {
+                    setAddress(e.target.value);
+                    if (touched.address) setFieldErrors((prev) => ({ ...prev, address: validateAddress(e.target.value) }));
+                  }}
+                  onBlur={() => handleBlur('address')}
+                  placeholder="e.g. 12th Main Road, Indiranagar, Bangalore"
+                  className="w-full px-3 py-2 auth-input rounded-xl border border-slate-300/80 bg-white/80 text-xs text-charcoal font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-charcoal mb-1">
+                  Business Phone Number *
+                </label>
+                <div className="relative">
+                  <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. +91 98765 00000"
+                    className="w-full pl-9 pr-3 py-2 auth-input rounded-xl border border-slate-300/80 bg-white/80 text-xs text-charcoal font-semibold"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Pricing Grid */}

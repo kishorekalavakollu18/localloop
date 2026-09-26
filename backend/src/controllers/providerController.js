@@ -34,6 +34,7 @@ exports.createProvider = async (req, res) => {
       businessName,
       category,
       description,
+      phone,
       coordinates, // [lng, lat]
       address,
       pricing,
@@ -67,6 +68,7 @@ exports.createProvider = async (req, res) => {
       businessName,
       category: category.toLowerCase(),
       description: description || '',
+      phone: phone || req.user.phone || '',
       location: {
         type: 'Point',
         coordinates: coords,
@@ -82,7 +84,9 @@ exports.createProvider = async (req, res) => {
       isVerified: false,
     });
 
-    await User.findByIdAndUpdate(userId, { role: 'provider' });
+    const userUpdate = { role: 'provider' };
+    if (phone) userUpdate.phone = phone;
+    await User.findByIdAndUpdate(userId, userUpdate);
 
     return res.status(201).json({
       success: true,
@@ -390,6 +394,7 @@ exports.updateProvider = async (req, res) => {
       businessName,
       category,
       description,
+      phone,
       coordinates,
       address,
       pricing,
@@ -400,6 +405,7 @@ exports.updateProvider = async (req, res) => {
     if (businessName) provider.businessName = businessName;
     if (category) provider.category = category.toLowerCase();
     if (description !== undefined) provider.description = description;
+    if (phone !== undefined) provider.phone = phone;
     if (address) provider.address = address;
     if (pricing) {
       provider.pricing = {
@@ -418,6 +424,9 @@ exports.updateProvider = async (req, res) => {
     }
 
     await provider.save();
+    if (phone && provider.userId) {
+      await User.findByIdAndUpdate(provider.userId, { phone });
+    }
 
     return res.status(200).json({
       success: true,

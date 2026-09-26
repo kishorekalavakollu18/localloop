@@ -23,6 +23,11 @@ const providerSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    phone: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     location: {
       type: {
         type: String,

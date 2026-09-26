@@ -48,6 +48,7 @@ const ProviderDashboard = () => {
   const [businessName, setBusinessName] = useState('');
   const [category, setCategory] = useState('plumber');
   const [description, setDescription] = useState('');
+  const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [pricingAmount, setPricingAmount] = useState(350);
   const [pricingType, setPricingType] = useState('per hour');
@@ -75,6 +76,7 @@ const ProviderDashboard = () => {
           setBusinessName(provRes.provider.businessName || '');
           setCategory(provRes.provider.category || 'plumber');
           setDescription(provRes.provider.description || '');
+          setPhone(provRes.provider.phone || provRes.provider.userId?.phone || user?.phone || '');
           setAddress(provRes.provider.address || '');
           setPricingAmount(provRes.provider.pricing?.amount || 350);
           setPricingType(provRes.provider.pricing?.type || 'per hour');
@@ -120,6 +122,7 @@ const ProviderDashboard = () => {
         businessName,
         category,
         description,
+        phone,
         address,
         pricing: {
           type: pricingType,
@@ -454,17 +457,33 @@ const ProviderDashboard = () => {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1.5">
-                Physical Address
-              </label>
-              <input
-                type="text"
-                required
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm text-slate-800"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-700 mb-1.5">
+                  Physical Address
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-700 mb-1.5">
+                  Contact Phone Number *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. +91 98765 00000"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm text-slate-800 font-semibold text-indigo-900"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
