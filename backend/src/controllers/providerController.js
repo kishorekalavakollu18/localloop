@@ -101,22 +101,27 @@ exports.createProvider = async (req, res) => {
 // @desc    Get nearby providers with 2dsphere geospatial search, travel fees, and relevance ranking
 // @route   GET /api/providers/nearby
 // @access  Public
+// @desc    Get nearby providers with 2dsphere geospatial search, travel fees, and smart fallback for 100% visibility
+// @route   GET /api/providers/nearby
+// @access  Public
 exports.getNearbyProviders = async (req, res) => {
   try {
     const { lat, lng, radius, category, search, sort } = req.query;
 
-    const radiusKm = radius ? parseFloat(radius) : 25;
+    const radiusKm = radius ? parseFloat(radius) : 50;
     const maxDistanceMeters = radiusKm * 1000;
 
     const matchFilter = {};
     if (category && category !== 'all') {
       matchFilter.category = category.toLowerCase();
     }
-    if (search) {
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
       matchFilter.$or = [
-        { businessName: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { address: { $regex: search, $options: 'i' } },
+        { businessName: searchRegex },
+        { description: searchRegex },
+        { address: searchRegex },
+        { category: searchRegex },
       ];
     }
 
@@ -124,54 +129,97 @@ exports.getNearbyProviders = async (req, res) => {
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lng);
 
-      const pipeline = [
-        {
+      const buildPipeline = (applyDistanceCap = true, applyCategory = true, applySearch = true) => {
+        const currentMatch = {};
+        if (applyCategory && category && category !== 'all') {
+          currentMatch.category = category.toLowerCase();
+        }
+        if (applySearch && search && search.trim()) {
+          const searchRegex = new RegExp(search.trim(), 'i');
+          currentMatch.$or = [
+            { businessName: searchRegex },
+            { description: searchRegex },
+            { address: searchRegex },
+            { category: searchRegex },
+          ];
+        }
+
+        const geoNearStage = {
           $geoNear: {
             near: {
               type: 'Point',
               coordinates: [longitude, latitude],
             },
             distanceField: 'distanceMeters',
-            maxDistance: maxDistanceMeters,
             spherical: true,
-            query: matchFilter,
+            query: currentMatch,
           },
-        },
-        {
-          $lookup: {
-            from: 'users',
-            localField: 'userId',
-            foreignField: '_id',
-            as: 'user',
-          },
-        },
-        {
-          $unwind: {
-            path: '$user',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $project: {
-            'user.password': 0,
-          },
-        },
-      ];
+        };
 
-      // Sorting pipelines
-      if (sort === 'rating') {
-        pipeline.push({ $sort: { 'rating.avg': -1, distanceMeters: 1 } });
-      } else if (sort === 'price_asc') {
-        pipeline.push({ $sort: { 'pricing.amount': 1 } });
-      } else if (sort === 'price_desc') {
-        pipeline.push({ $sort: { 'pricing.amount': -1 } });
-      } else {
-        pipeline.push({ $sort: { distanceMeters: 1 } });
+        if (applyDistanceCap && maxDistanceMeters > 0) {
+          geoNearStage.$geoNear.maxDistance = maxDistanceMeters;
+        }
+
+        const pipeline = [
+          geoNearStage,
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'userId',
+              foreignField: '_id',
+              as: 'user',
+            },
+          },
+          {
+            $unwind: {
+              path: '$user',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $project: {
+              'user.password': 0,
+            },
+          },
+        ];
+
+        if (sort === 'rating') {
+          pipeline.push({ $sort: { 'rating.avg': -1, distanceMeters: 1 } });
+        } else if (sort === 'price_asc') {
+          pipeline.push({ $sort: { 'pricing.amount': 1 } });
+        } else if (sort === 'price_desc') {
+          pipeline.push({ $sort: { 'pricing.amount': -1 } });
+        } else {
+          pipeline.push({ $sort: { distanceMeters: 1 } });
+        }
+
+        return pipeline;
+      };
+
+      // Attempt 1: Strict distance cap with search & category
+      let providers = await Provider.aggregate(buildPipeline(true, true, true));
+      let isFallback = false;
+      let fallbackMessage = '';
+
+      // Attempt 2: If 0 providers within distance cap, expand to ALL distances (no distance cap)
+      if (providers.length === 0) {
+        providers = await Provider.aggregate(buildPipeline(false, true, true));
+        if (providers.length > 0) {
+          isFallback = true;
+          fallbackMessage = `Expanded search beyond ${radiusKm} km to show all matching neighborhood providers.`;
+        }
       }
 
-      let providers = await Provider.aggregate(pipeline);
+      // Attempt 3: If still 0 providers (e.g., search keyword yielded no direct match), show ALL available providers sorted by distance!
+      if (providers.length === 0) {
+        providers = await Provider.aggregate(buildPipeline(false, false, false));
+        if (providers.length > 0) {
+          isFallback = true;
+          fallbackMessage = `No exact matches for "${search || category}". Showing all available neighborhood providers.`;
+        }
+      }
 
-      // Map distance in km, calculate dynamic travel fee & relevance score
+      // Map distance in km, calculate travel fee & relevance score
       providers = providers.map((p) => {
         const distKm = metersToKm(p.distanceMeters);
         const travelFee = calculateTravelFee(distKm);
@@ -191,27 +239,39 @@ exports.getNearbyProviders = async (req, res) => {
         success: true,
         count: providers.length,
         radiusKm,
+        isFallback,
+        fallbackMessage,
         center: { lat: latitude, lng: longitude },
         providers,
       });
     } else {
-      let query = Provider.find(matchFilter).populate('userId', 'name email phone');
+      // No coordinates passed: standard query with fallback
+      let queryMatch = { ...matchFilter };
+      let providers = await Provider.find(queryMatch).populate('userId', 'name email phone');
 
-      if (sort === 'rating') {
-        query = query.sort({ 'rating.avg': -1 });
-      } else if (sort === 'price_asc') {
-        query = query.sort({ 'pricing.amount': 1 });
-      } else if (sort === 'price_desc') {
-        query = query.sort({ 'pricing.amount': -1 });
-      } else {
-        query = query.sort({ createdAt: -1 });
+      let isFallback = false;
+      let fallbackMessage = '';
+
+      // If search yielded 0 results, return ALL providers as fallback
+      if (providers.length === 0) {
+        providers = await Provider.find({}).populate('userId', 'name email phone');
+        isFallback = true;
+        fallbackMessage = `Showing all available neighborhood service providers.`;
       }
 
-      const providers = await query.exec();
+      if (sort === 'rating') {
+        providers.sort((a, b) => (b.rating?.avg || 0) - (a.rating?.avg || 0));
+      } else if (sort === 'price_asc') {
+        providers.sort((a, b) => (a.pricing?.amount || 0) - (b.pricing?.amount || 0));
+      } else if (sort === 'price_desc') {
+        providers.sort((a, b) => (b.pricing?.amount || 0) - (a.pricing?.amount || 0));
+      }
 
       return res.status(200).json({
         success: true,
         count: providers.length,
+        isFallback,
+        fallbackMessage,
         providers,
       });
     }

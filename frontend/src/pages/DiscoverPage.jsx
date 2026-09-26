@@ -24,8 +24,9 @@ const DiscoverPage = () => {
   // Filters & State
   const [category, setCategory] = useState(searchParams.get('category') || 'all');
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
-  const [radius, setRadius] = useState(15); // default 15km
+  const [radius, setRadius] = useState(50); // default 50km
   const [sortBy, setSortBy] = useState('distance'); // distance, rating, price_asc, price_desc
+  const [fallbackInfo, setFallbackInfo] = useState('');
 
   // Geolocation State
   const [userLocation, setUserLocation] = useState(null); // { lat, lng }
@@ -65,6 +66,7 @@ const DiscoverPage = () => {
   const fetchProviders = useCallback(async () => {
     setLoading(true);
     setError('');
+    setFallbackInfo('');
     try {
       const params = {
         category: category !== 'all' ? category : undefined,
@@ -81,6 +83,9 @@ const DiscoverPage = () => {
       const res = await providerService.getNearby(params);
       if (res.success) {
         setProviders(res.providers || []);
+        if (res.fallbackMessage) {
+          setFallbackInfo(res.fallbackMessage);
+        }
       }
     } catch (err) {
       setError(err.message || 'Failed to fetch providers.');
@@ -112,7 +117,7 @@ const DiscoverPage = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by provider name, specialty, or area..."
+                placeholder="Search by provider name, service, skill, or address..."
                 className="w-full pl-10 pr-4 py-2 bg-[#F2EBDC] rounded-xl text-xs font-semibold text-[#2B2621] placeholder:text-[#8C8275] focus:bg-white focus:ring-2 focus:ring-[#C6511F] focus:outline-hidden transition-all border border-[#E8DFC9]"
               />
             </div>
@@ -156,12 +161,12 @@ const DiscoverPage = () => {
               {/* Radius Filter */}
               <div className="flex items-center gap-2 px-3 py-2 bg-[#F2EBDC] border border-[#E8DFC9] rounded-xl text-xs font-bold text-[#2B2621]">
                 <SlidersHorizontal className="w-3.5 h-3.5 text-[#C6511F]" />
-                <span>Radius: {radius} km</span>
+                <span>Radius: {radius >= 100 ? 'All Distances' : `${radius} km`}</span>
                 <input
                   type="range"
-                  min="3"
-                  max="50"
-                  step="2"
+                  min="5"
+                  max="100"
+                  step="5"
                   value={radius}
                   onChange={(e) => setRadius(Number(e.target.value))}
                   className="w-16 sm:w-24 accent-[#C6511F] cursor-pointer"
@@ -237,6 +242,25 @@ const DiscoverPage = () => {
 
       {/* Main Discover Layout */}
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+        {fallbackInfo && (
+          <div className="mb-4 flex items-center justify-between p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 font-semibold shadow-xs">
+            <div className="flex items-center gap-2">
+              <Compass className="w-4 h-4 text-[#C6511F] shrink-0" />
+              <span>{fallbackInfo}</span>
+            </div>
+            <button
+              onClick={() => {
+                setCategory('all');
+                setSearchQuery('');
+                setRadius(100);
+              }}
+              className="text-[11px] font-bold text-[#C6511F] hover:underline shrink-0"
+            >
+              Show All Services →
+            </button>
+          </div>
+        )}
+
         {locationStatus === 'denied' && (
           <div className="mb-4 flex items-center justify-between p-3.5 bg-[#FDF4E5] border border-[#F4DCB5] rounded-2xl text-xs text-[#B87719] font-bold">
             <div className="flex items-center gap-2">
@@ -270,7 +294,7 @@ const DiscoverPage = () => {
               </h2>
 
               <span className="text-xs text-[#8C8275] font-semibold">
-                Within {radius} km radius
+                {radius >= 100 ? 'All City Distances' : `Within ${radius} km`}
               </span>
             </div>
 
@@ -289,26 +313,21 @@ const DiscoverPage = () => {
                   <Compass className="w-8 h-8" />
                 </div>
                 <h3 className="text-lg font-heading font-extrabold text-[#2B2621]">
-                  No providers found within {radius} km
+                  No matching providers found
                 </h3>
                 <p className="text-xs text-[#6B6153] max-w-md mx-auto">
-                  Try widening your search radius or selecting "All Services".
+                  Click below to view all available neighborhood service providers.
                 </p>
                 <div className="flex items-center justify-center gap-3 pt-2">
-                  <button
-                    onClick={() => setRadius(35)}
-                    className="px-4 py-2 bg-[#C6511F] text-white rounded-full text-xs font-bold shadow-md shadow-[#C6511F]/20 hover:bg-[#A84116]"
-                  >
-                    Increase Radius to 35 km
-                  </button>
                   <button
                     onClick={() => {
                       setCategory('all');
                       setSearchQuery('');
+                      setRadius(100);
                     }}
-                    className="px-4 py-2 bg-[#F2EBDC] text-[#2B2621] rounded-full text-xs font-bold hover:bg-[#E8DFC9]"
+                    className="px-5 py-2.5 bg-[#C6511F] text-white rounded-full text-xs font-bold shadow-md shadow-[#C6511F]/20 hover:bg-[#A84116]"
                   >
-                    Reset Filters
+                    View All Services & Professionals
                   </button>
                 </div>
               </div>
