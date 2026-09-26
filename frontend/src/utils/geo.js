@@ -38,7 +38,8 @@ export const INDIAN_PINCODES = {
 
   // Andhra Pradesh & Telangana
   '523157': { name: 'Chirala / Laxmi Puram / Bapatla', city: 'Chirala', lat: 15.8322, lng: 80.3630 },
-  '522018': { name: 'Tadikonda / Guntur Rural', city: 'Guntur', lat: 16.4118, lng: 80.3791 },
+  '522018': { name: 'Phanidharam / Tadikonda / Guntur', city: 'Guntur', lat: 16.3615, lng: 80.3940 },
+  '522236': { name: 'Phanidharam / Tadikonda', city: 'Guntur', lat: 16.3615, lng: 80.3940 },
   '522001': { name: 'Guntur Central / Station', city: 'Guntur', lat: 16.3067, lng: 80.4365 },
   '522002': { name: 'Guntur Arundelpet / Brodipet', city: 'Guntur', lat: 16.3120, lng: 80.4420 },
   '523001': { name: 'Ongole Central / Church', city: 'Ongole', lat: 15.5057, lng: 80.0499 },
@@ -100,6 +101,52 @@ export const extractPincode = (address) => {
   return match ? match[0] : null;
 };
 
+export const LOCAL_AREAS = [
+  { regex: /ph?anidh?aram/i, name: 'Phanidharam Village, Tadikonda', city: 'Guntur', lat: 16.3615, lng: 80.3940, pincode: '522018' },
+  { regex: /tadikonda/i, name: 'Tadikonda', city: 'Guntur', lat: 16.4118, lng: 80.3791, pincode: '522018' },
+  { regex: /laxmi\s*puram/i, name: 'Laxmipuram, Chirala', city: 'Chirala', lat: 15.8322, lng: 80.3630, pincode: '523157' },
+  { regex: /chirala/i, name: 'Chirala', city: 'Chirala', lat: 15.8246, lng: 80.3544, pincode: '523155' },
+  { regex: /bapatla/i, name: 'Bapatla', city: 'Bapatla', lat: 15.9042, lng: 80.4674, pincode: '522124' },
+  { regex: /tenali/i, name: 'Tenali', city: 'Tenali', lat: 16.2430, lng: 80.6400, pincode: '522201' },
+  { regex: /ongole/i, name: 'Ongole', city: 'Ongole', lat: 15.5057, lng: 80.0499, pincode: '523001' },
+  { regex: /guntur/i, name: 'Guntur', city: 'Guntur', lat: 16.3067, lng: 80.4365, pincode: '522001' },
+  { regex: /vijayawada/i, name: 'Vijayawada', city: 'Vijayawada', lat: 16.5062, lng: 80.6480, pincode: '520001' },
+  { regex: /mangalagiri/i, name: 'Mangalagiri', city: 'Guntur', lat: 16.4300, lng: 80.5500, pincode: '522503' },
+  { regex: /amaravati/i, name: 'Amaravati', city: 'Guntur', lat: 16.5735, lng: 80.3575, pincode: '522020' },
+  { regex: /hyderabad|hitec|madhapur/i, name: 'Hyderabad', city: 'Hyderabad', lat: 17.4474, lng: 78.3762, pincode: '500081' },
+];
+
+// Resolve pincode or area name to coordinates and neighborhood info
+export const resolveAddressOrPincode = (input) => {
+  if (!input) return null;
+  const str = input.toString().trim();
+
+  // Try direct 6-digit pincode first
+  const pin = extractPincode(str) || (str.length === 6 && /^\d{6}$/.test(str) ? str : null);
+  if (pin && INDIAN_PINCODES[pin]) {
+    return { pincode: pin, ...INDIAN_PINCODES[pin] };
+  }
+
+  // Check local areas
+  for (const area of LOCAL_AREAS) {
+    if (area.regex.test(str)) {
+      return {
+        pincode: area.pincode,
+        name: area.name,
+        city: area.city,
+        lat: area.lat,
+        lng: area.lng,
+      };
+    }
+  }
+
+  if (pin) {
+    return resolvePincode(pin);
+  }
+
+  return null;
+};
+
 // Resolve pincode to coordinates and neighborhood info
 export const resolvePincode = (pincode) => {
   if (!pincode) return null;
@@ -111,14 +158,27 @@ export const resolvePincode = (pincode) => {
     };
   }
 
+  // Check local areas by pincode
+  for (const area of LOCAL_AREAS) {
+    if (area.pincode === cleanCode) {
+      return {
+        pincode: cleanCode,
+        name: area.name,
+        city: area.city,
+        lat: area.lat,
+        lng: area.lng,
+      };
+    }
+  }
+
   // Fallback heuristics for unlisted Indian pincodes by state prefix
   if (cleanCode.startsWith('523') || cleanCode.startsWith('522') || cleanCode.startsWith('520') || cleanCode.startsWith('521') || cleanCode.startsWith('524')) {
     return {
       pincode: cleanCode,
       name: `Andhra Coastal Zone (${cleanCode})`,
       city: 'Andhra Pradesh',
-      lat: 16.2,
-      lng: 80.4,
+      lat: 16.36,
+      lng: 80.39,
     };
   }
   if (cleanCode.startsWith('51')) {

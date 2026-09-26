@@ -128,18 +128,36 @@ exports.getNearbyProviders = async (req, res) => {
     const radiusKm = radius ? parseFloat(radius) : 50;
     const maxDistanceMeters = radiusKm * 1000;
 
+    const STANDARD_CATEGORIES = ['plumber', 'electrician', 'tutor', 'tiffin', 'cleaner'];
+
     const matchFilter = {};
     if (category && category !== 'all') {
-      matchFilter.category = category.toLowerCase();
+      if (category.toLowerCase() === 'other') {
+        matchFilter.$or = [
+          { category: 'other' },
+          { category: { $nin: STANDARD_CATEGORIES } },
+        ];
+      } else {
+        matchFilter.category = category.toLowerCase();
+      }
     }
     if (search && search.trim()) {
       const searchRegex = new RegExp(search.trim(), 'i');
-      matchFilter.$or = [
+      const searchCond = [
         { businessName: searchRegex },
         { description: searchRegex },
         { address: searchRegex },
         { category: searchRegex },
       ];
+      if (matchFilter.$or) {
+        matchFilter.$and = [
+          { $or: matchFilter.$or },
+          { $or: searchCond },
+        ];
+        delete matchFilter.$or;
+      } else {
+        matchFilter.$or = searchCond;
+      }
     }
 
     if (lat && lng && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
@@ -149,16 +167,32 @@ exports.getNearbyProviders = async (req, res) => {
       const buildPipeline = (applyDistanceCap = true, applyCategory = true, applySearch = true) => {
         const currentMatch = {};
         if (applyCategory && category && category !== 'all') {
-          currentMatch.category = category.toLowerCase();
+          if (category.toLowerCase() === 'other') {
+            currentMatch.$or = [
+              { category: 'other' },
+              { category: { $nin: STANDARD_CATEGORIES } },
+            ];
+          } else {
+            currentMatch.category = category.toLowerCase();
+          }
         }
         if (applySearch && search && search.trim()) {
           const searchRegex = new RegExp(search.trim(), 'i');
-          currentMatch.$or = [
+          const searchCond = [
             { businessName: searchRegex },
             { description: searchRegex },
             { address: searchRegex },
             { category: searchRegex },
           ];
+          if (currentMatch.$or) {
+            currentMatch.$and = [
+              { $or: currentMatch.$or },
+              { $or: searchCond },
+            ];
+            delete currentMatch.$or;
+          } else {
+            currentMatch.$or = searchCond;
+          }
         }
 
         const geoNearStage = {

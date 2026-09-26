@@ -29,7 +29,8 @@ const INDIAN_PINCODE_COORDINATES = {
   // Andhra Pradesh & Telangana
   '523157': { name: 'Laxmipuram / Chirala', city: 'Chirala', lat: 15.8322, lng: 80.3630 },
   '523155': { name: 'Chirala Town / Station', city: 'Chirala', lat: 15.8200, lng: 80.3500 },
-  '522018': { name: 'Tadikonda / Guntur Rural', city: 'Guntur', lat: 16.4118, lng: 80.3791 },
+  '522018': { name: 'Phanidharam / Tadikonda / Guntur', city: 'Guntur', lat: 16.3615, lng: 80.3940 },
+  '522236': { name: 'Phanidharam / Tadikonda', city: 'Guntur', lat: 16.3615, lng: 80.3940 },
   '522001': { name: 'Guntur Central / Market', city: 'Guntur', lat: 16.3067, lng: 80.4365 },
   '522002': { name: 'Guntur Arundelpet', city: 'Guntur', lat: 16.3010, lng: 80.4420 },
   '522004': { name: 'Guntur Brodipet', city: 'Guntur', lat: 16.3080, lng: 80.4350 },
@@ -75,6 +76,21 @@ function extractPincode(text) {
   return match ? match[0] : null;
 }
 
+const LOCAL_AREAS = [
+  { regex: /ph?anidh?aram/i, name: 'Phanidharam Village, Tadikonda', city: 'Guntur', lat: 16.3615, lng: 80.3940, pincode: '522018' },
+  { regex: /tadikonda/i, name: 'Tadikonda', city: 'Guntur', lat: 16.4118, lng: 80.3791, pincode: '522018' },
+  { regex: /laxmi\s*puram/i, name: 'Laxmipuram, Chirala', city: 'Chirala', lat: 15.8322, lng: 80.3630, pincode: '523157' },
+  { regex: /chirala/i, name: 'Chirala', city: 'Chirala', lat: 15.8246, lng: 80.3544, pincode: '523155' },
+  { regex: /bapatla/i, name: 'Bapatla', city: 'Bapatla', lat: 15.9042, lng: 80.4674, pincode: '522124' },
+  { regex: /tenali/i, name: 'Tenali', city: 'Tenali', lat: 16.2430, lng: 80.6400, pincode: '522201' },
+  { regex: /ongole/i, name: 'Ongole', city: 'Ongole', lat: 15.5057, lng: 80.0499, pincode: '523001' },
+  { regex: /guntur/i, name: 'Guntur', city: 'Guntur', lat: 16.3067, lng: 80.4365, pincode: '522001' },
+  { regex: /vijayawada/i, name: 'Vijayawada', city: 'Vijayawada', lat: 16.5062, lng: 80.6480, pincode: '520001' },
+  { regex: /mangalagiri/i, name: 'Mangalagiri', city: 'Guntur', lat: 16.4300, lng: 80.5500, pincode: '522503' },
+  { regex: /amaravati/i, name: 'Amaravati', city: 'Guntur', lat: 16.5735, lng: 80.3575, pincode: '522020' },
+  { regex: /hyderabad|hitec|madhapur/i, name: 'Hyderabad', city: 'Hyderabad', lat: 17.4474, lng: 78.3762, pincode: '500081' },
+];
+
 /**
  * Geocode an address and/or PIN code into [lng, lat] coordinates
  */
@@ -90,6 +106,20 @@ async function geocodeAddress(address, pincode) {
       formattedAddress: address || `${info.name}, ${info.city} - ${pin}`,
       source: 'pincode_cache',
     };
+  }
+
+  // 1b. Check local area text match (e.g. panidharam, tadikonda, chirala, etc.)
+  if (address && typeof address === 'string') {
+    for (const area of LOCAL_AREAS) {
+      if (area.regex.test(address)) {
+        return {
+          coordinates: [area.lng, area.lat],
+          pincode: pin || area.pincode,
+          formattedAddress: address || `${area.name}, ${area.city} - ${area.pincode}`,
+          source: 'local_area_match',
+        };
+      }
+    }
   }
 
   // 2. Online Geocoding via Nominatim with full address query

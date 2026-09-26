@@ -21,6 +21,9 @@ import {
   Navigation,
   ArrowRight,
   Compass,
+  Camera,
+  Upload,
+  X,
 } from 'lucide-react';
 
 const RegisterPage = () => {
@@ -43,11 +46,14 @@ const RegisterPage = () => {
   // Provider specific fields
   const [businessName, setBusinessName] = useState('');
   const [category, setCategory] = useState('plumber');
+  const [customCategory, setCustomCategory] = useState('');
   const [description, setDescription] = useState('');
   const [pricingAmount, setPricingAmount] = useState('350');
   const [pricingType, setPricingType] = useState('per hour');
-  const [coordinates, setCoordinates] = useState([80.3630, 15.8322]); // [lng, lat]
+  const [coordinates, setCoordinates] = useState([80.3940, 16.3615]); // [lng, lat]
   const [detectingLocation, setDetectingLocation] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -123,6 +129,22 @@ const RegisterPage = () => {
     }
   };
 
+  // Image Upload handler
+  const handleImageFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image file size must be less than 5MB');
+      return;
+    }
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -183,14 +205,19 @@ const RegisterPage = () => {
 
       // 2. If provider role, create provider profile
       if (role === 'provider') {
+        const finalCategory = (category === 'custom' || category === 'other') && customCategory.trim()
+          ? customCategory.trim().toLowerCase()
+          : category.toLowerCase();
+
         const provRes = await providerService.create({
           businessName,
-          category,
+          category: finalCategory,
           description,
           phone,
           address,
           pincode: activePin,
           coordinates: finalCoordinates,
+          images: imagePreview ? [imagePreview] : [],
           pricing: {
             type: pricingType,
             amount: Number(pricingAmount),
@@ -198,6 +225,13 @@ const RegisterPage = () => {
         });
 
         if (provRes.success && provRes.provider) {
+          if (imageFile) {
+            try {
+              await providerService.uploadImage(provRes.provider._id, imageFile);
+            } catch (imgErr) {
+              console.warn('Image upload error:', imgErr.message);
+            }
+          }
           updateProviderState(provRes.provider);
         }
         navigate('/provider/dashboard');
@@ -476,7 +510,7 @@ const RegisterPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-semibold text-charcoal mb-1">
-                  Business Name *
+                  Business / Profile Name *
                 </label>
                 <input
                   type="text"
@@ -487,26 +521,97 @@ const RegisterPage = () => {
                     if (touched.businessName) setFieldErrors((prev) => ({ ...prev, businessName: validateBusinessName(e.target.value) }));
                   }}
                   onBlur={() => handleBlur('businessName')}
-                  placeholder="e.g. Rao Plumbing & Fittings"
+                  placeholder="e.g. Kishore Web Solutions"
                   className="w-full px-3 py-2 auth-input rounded-xl border border-slate-300/80 bg-white/80 text-xs text-charcoal font-medium"
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-semibold text-charcoal mb-1">
-                  Category *
+                  Profession / Service Category *
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full px-3 py-2 h-[42px] rounded-xl border border-slate-300/80 bg-white text-xs text-charcoal font-medium cursor-pointer"
                 >
-                  {CATEGORIES.filter((c) => c.id !== 'all').map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.label}
-                    </option>
-                  ))}
+                  <option value="plumber">Plumber</option>
+                  <option value="electrician">Electrician</option>
+                  <option value="tutor">Tutor & Teacher</option>
+                  <option value="tiffin">Home Tiffin / Food</option>
+                  <option value="cleaner">Cleaner & Maid</option>
+                  <option value="other">Appliance & Repair</option>
+                  <option value="custom">✏️ Enter Custom Profession Manually...</option>
                 </select>
+              </div>
+            </div>
+
+            {/* Manual Custom Profession Input */}
+            {(category === 'custom' || category === 'other') && (
+              <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-200 space-y-1 animate-form-entrance">
+                <label className="block text-[11px] font-bold text-amber-900">
+                  Enter Your Custom Profession / Skill Title *
+                </label>
+                <input
+                  type="text"
+                  required={category === 'custom'}
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  placeholder="e.g. Website Developer, Carpenter, Painter, Tailor, Beautician"
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-amber-300 text-xs font-semibold text-charcoal placeholder:text-slate-400 focus:ring-2 focus:ring-amber-500"
+                />
+                <p className="text-[10px] text-amber-700">
+                  Type your exact profession so neighborhood customers can search and find you directly.
+                </p>
+              </div>
+            )}
+
+            {/* Provider Photo Upload */}
+            <div className="bg-white/80 p-3 rounded-xl border border-slate-200/80 space-y-2">
+              <label className="block text-[11px] font-semibold text-charcoal flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Camera className="w-3.5 h-3.5 text-terracotta" /> Provider Profile / Work Photo
+                </span>
+                <span className="text-[10px] text-slate-400 font-normal">Optional / Recommended</span>
+              </label>
+
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0 relative group">
+                  {imagePreview ? (
+                    <>
+                      <img src={imagePreview} alt="Provider Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageFile(null);
+                          setImagePreview('');
+                        }}
+                        className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs transition-opacity cursor-pointer"
+                        title="Remove photo"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <Camera className="w-6 h-6 text-slate-300" />
+                  )}
+                </div>
+
+                <div className="flex-1 space-y-1">
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/80 rounded-xl text-xs font-bold text-terracotta hover:bg-orange-100/70 transition-colors cursor-pointer">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{imagePreview ? 'Change Photo' : 'Upload Photo'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageFileChange}
+                    />
+                  </label>
+                  <p className="text-[10px] text-slate-500">
+                    Upload your profile picture or work sample (JPG, PNG).
+                  </p>
+                </div>
               </div>
             </div>
 

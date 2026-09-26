@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { providerService } from '../services/api';
 import {
   getUserCoordinates,
@@ -7,6 +8,7 @@ import {
   CATEGORIES,
   POPULAR_PINCODES,
   resolvePincode,
+  resolveAddressOrPincode,
   extractPincode,
   calculateDistanceKm,
   calculateAccurateDistance,
@@ -26,6 +28,7 @@ import {
 
 const DiscoverPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
 
   // Filters & State
   const [category, setCategory] = useState(searchParams.get('category') || 'all');
@@ -34,21 +37,45 @@ const DiscoverPage = () => {
   const [sortBy, setSortBy] = useState('distance'); // distance, rating, price_asc, price_desc
   const [fallbackInfo, setFallbackInfo] = useState('');
 
+  // Initial user location resolution
+  const getInitialState = () => {
+    const savedPin = user?.pincode || localStorage.getItem('localloop_pincode') || '522018';
+    const resolved = resolveAddressOrPincode(savedPin) || resolveAddressOrPincode(user?.address) || {
+      lat: user?.location?.coordinates?.[1] || 16.3615,
+      lng: user?.location?.coordinates?.[0] || 80.3940,
+      name: user?.address || 'Current Location',
+      pincode: savedPin,
+    };
+    return {
+      pin: savedPin,
+      loc: { lat: resolved.lat, lng: resolved.lng },
+      name: `${resolved.name || 'Current Area'} (${resolved.pincode || savedPin})`,
+    };
+  };
+
+  const initial = getInitialState();
+
   // Pincode & Geolocation State
-  const [userPincode, setUserPincode] = useState(() => localStorage.getItem('localloop_pincode') || '560038');
-  const [pincodeInput, setPincodeInput] = useState(() => localStorage.getItem('localloop_pincode') || '560038');
-  const [userLocation, setUserLocation] = useState(() => {
-    const saved = localStorage.getItem('localloop_pincode') || '560038';
-    const resolved = resolvePincode(saved) || resolvePincode('560038');
-    return { lat: resolved.lat, lng: resolved.lng };
-  });
+  const [userPincode, setUserPincode] = useState(initial.pin);
+  const [pincodeInput, setPincodeInput] = useState(initial.pin);
+  const [userLocation, setUserLocation] = useState(initial.loc);
   const [locationStatus, setLocationStatus] = useState('success');
-  const [locationName, setLocationName] = useState(() => {
-    const saved = localStorage.getItem('localloop_pincode') || '560038';
-    const resolved = resolvePincode(saved) || resolvePincode('560038');
-    return `${resolved.name} (${resolved.pincode})`;
-  });
+  const [locationName, setLocationName] = useState(initial.name);
   const [isCrossCityNotice, setIsCrossCityNotice] = useState(false);
+
+  // Sync when user auth profile loads
+  useEffect(() => {
+    if (user?.pincode || user?.location?.coordinates?.length === 2) {
+      const pin = user.pincode || '522018';
+      const loc = user.location?.coordinates?.length === 2
+        ? { lat: user.location.coordinates[1], lng: user.location.coordinates[0] }
+        : (resolveAddressOrPincode(pin) || { lat: 16.3615, lng: 80.3940 });
+      setUserPincode(pin);
+      setPincodeInput(pin);
+      setUserLocation({ lat: loc.lat, lng: loc.lng });
+      setLocationName(user.address ? `${user.address} (${pin})` : `${loc.name || 'Local Area'} (${pin})`);
+    }
+  }, [user]);
 
   // Providers & UI State
   const [providers, setProviders] = useState([]);
@@ -57,21 +84,21 @@ const DiscoverPage = () => {
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState('split'); // split, map, list
 
-  // Apply Pincode helper
+  // Apply Pincode or Area Name helper
   const handleApplyPincode = (pincodeToApply) => {
     const code = (pincodeToApply || pincodeInput || '').trim();
     if (!code) return;
-    const resolved = resolvePincode(code);
+    const resolved = resolveAddressOrPincode(code);
     if (resolved) {
       setUserLocation({ lat: resolved.lat, lng: resolved.lng });
-      setUserPincode(resolved.pincode);
-      setPincodeInput(resolved.pincode);
-      setLocationName(`${resolved.name} (${resolved.pincode})`);
+      setUserPincode(resolved.pincode || code);
+      setPincodeInput(resolved.pincode || code);
+      setLocationName(`${resolved.name} (${resolved.pincode || code})`);
       setLocationStatus('success');
       setIsCrossCityNotice(false);
-      localStorage.setItem('localloop_pincode', resolved.pincode);
+      localStorage.setItem('localloop_pincode', resolved.pincode || code);
     } else {
-      alert(`Pincode "${code}" not found in local index. Please enter a valid 6-digit Indian postal code (e.g. 560038, 560095).`);
+      alert(`Location "${code}" not found. Please enter a valid 6-digit postal code (e.g. 522018, 523157) or area name like Panidharam.`);
     }
   };
 
@@ -81,29 +108,15 @@ const DiscoverPage = () => {
     setError('');
     try {
       const coords = await getUserCoordinates();
-      // Check if distance from Bengaluru cluster center is > 50km
-      const distFromBangalore = calculateDistanceKm(coords.lat, coords.lng, 12.9716, 77.5946);
-      if (distFromBangalore && distFromBangalore > 50) {
-        setIsCrossCityNotice(true);
-        // Keep search centered on user's selected neighborhood pincode for accurate local distances (0.8-5 km)
-        const resolved = resolvePincode(userPincode) || resolvePincode('560038');
-        setUserLocation({ lat: resolved.lat, lng: resolved.lng });
-        setLocationName(`${resolved.name} (${resolved.pincode})`);
-        setLocationStatus('success');
-      } else {
-        setIsCrossCityNotice(false);
-        setUserLocation({ lat: coords.lat, lng: coords.lng });
-        setLocationStatus('success');
-        setLocationName('Live Geolocation');
-      }
+      setUserLocation({ lat: coords.lat, lng: coords.lng });
+      setLocationStatus('success');
+      setLocationName(`Live GPS (${coords.lat.toFixed(3)}, ${coords.lng.toFixed(3)})`);
+      setIsCrossCityNotice(false);
     } catch (err) {
       console.warn('Geolocation fallback:', err.message);
       setLocationStatus('denied');
-      const resolved = resolvePincode(userPincode) || resolvePincode('560038');
-      setUserLocation({ lat: resolved.lat, lng: resolved.lng });
-      setLocationName(`${resolved.name} (${resolved.pincode})`);
     }
-  }, [userPincode]);
+  }, []);
 
   // Load nearby providers from backend
   const fetchProviders = useCallback(async () => {

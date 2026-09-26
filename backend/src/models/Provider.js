@@ -15,8 +15,8 @@ const providerSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      required: [true, 'Please select a category'],
-      enum: ['plumber', 'electrician', 'tutor', 'tiffin', 'cleaner', 'other'],
+      required: [true, 'Please select or enter your profession/service'],
+      trim: true,
       lowercase: true,
     },
     description: {

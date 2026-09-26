@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { bookingService, providerService } from '../services/api';
+import { bookingService, providerService, getImageUrl } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import ChatModal from '../components/ChatModal';
 import {
@@ -27,6 +27,10 @@ import {
   Navigation,
   Power,
   Compass,
+  Camera,
+  Upload,
+  X,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 const DAYS_OF_WEEK = [
@@ -58,6 +62,7 @@ const ProviderDashboard = () => {
   // Edit form state
   const [businessName, setBusinessName] = useState('');
   const [category, setCategory] = useState('plumber');
+  const [customCategory, setCustomCategory] = useState('');
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -65,6 +70,7 @@ const ProviderDashboard = () => {
   const [pricingAmount, setPricingAmount] = useState(350);
   const [pricingType, setPricingType] = useState('per hour');
   const [updatingLocation, setUpdatingLocation] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [availability, setAvailability] = useState([]);
 
   // Load provider data and bookings
@@ -85,16 +91,27 @@ const ProviderDashboard = () => {
       if (provider?._id) {
         const provRes = await providerService.getById(provider._id);
         if (provRes.success && provRes.provider) {
-          setProvider(provRes.provider);
-          setBusinessName(provRes.provider.businessName || '');
-          setCategory(provRes.provider.category || 'plumber');
-          setDescription(provRes.provider.description || '');
-          setPhone(provRes.provider.phone || provRes.provider.userId?.phone || user?.phone || '');
-          setAddress(provRes.provider.address || '');
-          setPincode(provRes.provider.pincode || (provRes.provider.address ? provRes.provider.address.match(/\b[1-9][0-9]{5}\b/)?.[0] : '') || '');
-          setPricingAmount(provRes.provider.pricing?.amount || 350);
-          setPricingType(provRes.provider.pricing?.type || 'per hour');
-          setAvailability(provRes.provider.availability || []);
+          const p = provRes.provider;
+          setProvider(p);
+          setBusinessName(p.businessName || '');
+
+          const cat = p.category || 'plumber';
+          const STANDARD = ['plumber', 'electrician', 'tutor', 'tiffin', 'cleaner', 'other'];
+          if (STANDARD.includes(cat.toLowerCase())) {
+            setCategory(cat.toLowerCase());
+            setCustomCategory('');
+          } else {
+            setCategory('custom');
+            setCustomCategory(cat);
+          }
+
+          setDescription(p.description || '');
+          setPhone(p.phone || p.userId?.phone || user?.phone || '');
+          setAddress(p.address || '');
+          setPincode(p.pincode || (p.address ? p.address.match(/\b[1-9][0-9]{5}\b/)?.[0] : '') || '');
+          setPricingAmount(p.pricing?.amount || 350);
+          setPricingType(p.pricing?.type || 'per hour');
+          setAvailability(p.availability || []);
         }
 
         const bData = await bookingService.getProviderBookings(provider._id);
@@ -179,9 +196,13 @@ const ProviderDashboard = () => {
     setUpdating(true);
     setError('');
     try {
+      const finalCategory = (category === 'custom' || category === 'other') && customCategory.trim()
+        ? customCategory.trim().toLowerCase()
+        : category.toLowerCase();
+
       const res = await providerService.update(provider._id, {
         businessName,
-        category,
+        category: finalCategory,
         description,
         phone,
         address,
@@ -203,6 +224,48 @@ const ProviderDashboard = () => {
       setError(err.message || 'Failed to update listing.');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  // Upload Provider Photo
+  const handleUploadImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !provider?._id) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Photo must be less than 5MB');
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const res = await providerService.uploadImage(provider._id, file);
+      if (res.success && res.imageUrl) {
+        setProvider((prev) => ({
+          ...prev,
+          images: res.images || [...(prev.images || []), res.imageUrl],
+        }));
+        setSuccessMsg('Photo uploaded successfully!');
+        setTimeout(() => setSuccessMsg(''), 3000);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to upload photo.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Remove an uploaded photo
+  const handleRemoveImage = async (indexToRemove) => {
+    if (!provider?._id || !provider.images) return;
+    const newImages = provider.images.filter((_, idx) => idx !== indexToRemove);
+    try {
+      const res = await providerService.update(provider._id, { images: newImages });
+      if (res.success) {
+        setProvider((prev) => ({ ...prev, images: newImages }));
+        setSuccessMsg('Photo removed successfully!');
+        setTimeout(() => setSuccessMsg(''), 3000);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to remove photo.');
     }
   };
 
@@ -553,9 +616,30 @@ const ProviderDashboard = () => {
                   <option value="tiffin">Tiffin</option>
                   <option value="cleaner">Cleaner</option>
                   <option value="other">Other / Appliances</option>
+                  <option value="custom">✏️ Enter Custom Profession Manually...</option>
                 </select>
               </div>
             </div>
+
+            {/* Manual Custom Profession Field */}
+            {(category === 'custom' || category === 'other') && (
+              <div className="bg-[#FBF7F4] p-4 rounded-2xl border border-[#F0D5C9] space-y-1.5 animate-form-entrance">
+                <label className="block text-xs font-bold uppercase text-[#C6511F]">
+                  Specify Custom Profession / Role *
+                </label>
+                <input
+                  type="text"
+                  required={category === 'custom'}
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  placeholder="e.g. Website Developer, Carpenter, Painter, Tailor..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#E4B5A0] focus:ring-2 focus:ring-[#C6511F] text-xs sm:text-sm text-slate-800 bg-white font-medium"
+                />
+                <p className="text-[11px] text-slate-500">
+                  Customers will see this exact profession on your public profile, search cards, and map pins.
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-bold uppercase text-slate-700 mb-1.5">
@@ -567,6 +651,64 @@ const ProviderDashboard = () => {
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#C6511F] text-xs sm:text-sm text-slate-800"
               />
+            </div>
+
+            {/* Provider Images & Work Gallery */}
+            <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-xs font-bold uppercase text-slate-700 flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-[#C6511F]" />
+                    <span>Provider Profile & Work Photos</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Add photos of yourself, shop front, tools, or past completed jobs.
+                  </p>
+                </div>
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#C6511F] hover:bg-[#B04316] text-white text-xs font-bold rounded-xl shadow-xs transition-colors self-start sm:self-auto">
+                  {uploadingImage ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="w-3.5 h-3.5" />
+                  )}
+                  <span>{uploadingImage ? 'Uploading...' : 'Upload Photo'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingImage}
+                    onChange={handleUploadImage}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {provider?.images && provider.images.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                  {provider.images.map((img, idx) => (
+                    <div key={idx} className="relative group rounded-xl overflow-hidden border border-slate-200 bg-white aspect-square shadow-xs">
+                      <img
+                        src={getImageUrl(img)}
+                        alt={`Provider photo ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-1.5 right-1.5 p-1 bg-black/70 hover:bg-rose-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-md"
+                        title="Delete photo"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-xl bg-white/60">
+                  <ImageIcon className="w-7 h-7 text-slate-300 mx-auto mb-1.5" />
+                  <p className="text-xs text-slate-500 font-medium">No photos uploaded yet</p>
+                  <p className="text-[11px] text-slate-400">Upload work photos so customers can preview your craftsmanship</p>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
