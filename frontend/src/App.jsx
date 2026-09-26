@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import NotificationToast from './components/NotificationToast';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -31,6 +32,7 @@ function App() {
         <ScrollToTop />
         <div className="flex flex-col min-h-screen">
           <Navbar />
+          <NotificationToast />
           <main className="flex-1">
             <Routes>
               {/* Public Routes */}

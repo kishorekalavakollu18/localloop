@@ -64,11 +64,24 @@ exports.createBooking = async (req, res) => {
       .populate('providerId', 'businessName category address pricing images userId')
       .populate('customerId', 'name email phone');
 
-    // Real-time Socket.io notification emit to provider
+    // Real-time Socket.io notification emit to provider & customer
     const io = req.app.get('io');
     if (io) {
+      const providerUserId = provider.userId.toString();
       io.emit(`provider_booking_${provider.userId}`, {
         type: 'new_booking',
+        booking: populatedBooking,
+      });
+      io.emit(`provider_notifications_${providerUserId}`, {
+        type: 'new_booking_request',
+        status: 'pending',
+        message: `📌 New booking request received from ${req.user.name} for ${slot}`,
+        booking: populatedBooking,
+      });
+      io.emit(`customer_notifications_${req.user._id}`, {
+        type: 'booking_sent',
+        status: 'pending',
+        message: `🚀 Booking request sent to ${provider.businessName}`,
         booking: populatedBooking,
       });
     }
@@ -226,10 +239,39 @@ exports.updateBookingStatus = async (req, res) => {
     // Real-time notification emit via Socket.io
     const io = req.app.get('io');
     if (io) {
+      const customerUserId = booking.customerId._id ? booking.customerId._id.toString() : booking.customerId.toString();
+      const providerUserId = booking.providerId?.userId ? booking.providerId.userId.toString() : '';
+
+      const statusMsg = status === 'confirmed'
+        ? `🎉 Your booking with ${updatedBooking.providerId?.businessName || 'Provider'} has been CONFIRMED!`
+        : status === 'cancelled'
+        ? `❌ Your booking with ${updatedBooking.providerId?.businessName || 'Provider'} was CANCELLED / REJECTED.`
+        : status === 'completed'
+        ? `✨ Your service appointment with ${updatedBooking.providerId?.businessName || 'Provider'} was marked COMPLETED!`
+        : `Booking status updated to ${status}`;
+
       io.emit(`booking_status_${booking._id}`, {
         status,
         booking: updatedBooking,
       });
+
+      if (customerUserId) {
+        io.emit(`customer_notifications_${customerUserId}`, {
+          type: 'booking_status_change',
+          status,
+          message: statusMsg,
+          booking: updatedBooking,
+        });
+      }
+
+      if (providerUserId) {
+        io.emit(`provider_notifications_${providerUserId}`, {
+          type: 'booking_status_change',
+          status,
+          message: `Booking with ${updatedBooking.customerId?.name || 'Customer'} was updated to ${status}.`,
+          booking: updatedBooking,
+        });
+      }
     }
 
     return res.status(200).json({

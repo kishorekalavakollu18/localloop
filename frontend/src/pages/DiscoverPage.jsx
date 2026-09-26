@@ -5,6 +5,7 @@ import {
   getUserCoordinates,
   CITY_PRESETS,
   CATEGORIES,
+  calculateDistanceKm,
 } from '../utils/geo';
 import LeafletMap from '../components/LeafletMap';
 import ProviderCard from '../components/ProviderCard';
@@ -82,7 +83,21 @@ const DiscoverPage = () => {
 
       const res = await providerService.getNearby(params);
       if (res.success) {
-        setProviders(res.providers || []);
+        const rawProviders = res.providers || [];
+        const mapped = rawProviders.map((p) => {
+          const pLat = p.location?.coordinates?.[1];
+          const pLng = p.location?.coordinates?.[0];
+          const exactDist = userLocation && pLat && pLng
+            ? calculateDistanceKm(userLocation.lat, userLocation.lng, pLat, pLng)
+            : p.distanceKm;
+
+          return {
+            ...p,
+            distanceKm: exactDist !== null && exactDist !== undefined ? exactDist : p.distanceKm,
+          };
+        });
+
+        setProviders(mapped);
         if (res.fallbackMessage) {
           setFallbackInfo(res.fallbackMessage);
         }
