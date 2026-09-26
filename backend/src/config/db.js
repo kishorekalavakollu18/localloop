@@ -1,26 +1,27 @@
 const mongoose = require('mongoose');
 
+const ATLAS_URI = 'mongodb+srv://kishorekalavakollu18_db_user:N8u9jUuMixdLfU89@cluster0.1clxe3y.mongodb.net/localloop?retryWrites=true&w=majority';
+
 const connectDB = async () => {
-  const primaryURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/localloop';
-  const fallbackURI = 'mongodb://localhost:27017/localloop';
+  const primaryURI = process.env.MONGODB_URI || ATLAS_URI;
 
   try {
     const conn = await mongoose.connect(primaryURI, {
       autoIndex: true,
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s if Atlas IP whitelist/firewall blocks
+      serverSelectionTimeoutMS: 5000,
     });
     console.log(`✅ MongoDB Connected (${primaryURI.includes('mongodb+srv') ? 'Atlas Cloud' : 'Local'}): ${conn.connection.host}`);
   } catch (primaryError) {
     console.warn(`⚠️ Primary MongoDB Connection Error: ${primaryError.message}`);
     
-    // Fallback to local MongoDB if primary fails
-    if (primaryURI !== fallbackURI) {
-      console.log(`🔄 Attempting fallback connection to local MongoDB: ${fallbackURI}...`);
+    if (primaryURI !== ATLAS_URI) {
+      console.log(`🔄 Attempting fallback connection to MongoDB Atlas Cloud...`);
       try {
-        const fallbackConn = await mongoose.connect(fallbackURI, {
+        const fallbackConn = await mongoose.connect(ATLAS_URI, {
           autoIndex: true,
+          serverSelectionTimeoutMS: 5000,
         });
-        console.log(`✅ Local MongoDB Connected Fallback: ${fallbackConn.connection.host}`);
+        console.log(`✅ Atlas MongoDB Connected Fallback: ${fallbackConn.connection.host}`);
         return;
       } catch (fallbackError) {
         console.error(`❌ Fallback MongoDB Connection Error: ${fallbackError.message}`);

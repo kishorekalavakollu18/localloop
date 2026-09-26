@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "LocalLoop — Hyperlocal Service Marketplace with MongoDB 2dsphere and Leaflet OpenStreetMap",
   "scripts": {
+    "start": "cd backend && node server.js",
+    "build": "cd backend && npm install",
+    "postinstall": "cd backend && npm install",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "seed": "cd backend && npm run seed",

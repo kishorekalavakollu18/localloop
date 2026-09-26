@@ -10,15 +10,15 @@ const { Server } = require('socket.io');
 // Load environment variables
 dotenv.config();
 
-const connectDB = require('./src/config/db');
+const connectDB = require('./backend/src/config/db');
 
 // Route imports
-const authRoutes = require('./src/routes/authRoutes');
-const providerRoutes = require('./src/routes/providerRoutes');
-const bookingRoutes = require('./src/routes/bookingRoutes');
-const reviewRoutes = require('./src/routes/reviewRoutes');
-const adminRoutes = require('./src/routes/adminRoutes');
-const messageRoutes = require('./src/routes/messageRoutes');
+const authRoutes = require('./backend/src/routes/authRoutes');
+const providerRoutes = require('./backend/src/routes/providerRoutes');
+const bookingRoutes = require('./backend/src/routes/bookingRoutes');
+const reviewRoutes = require('./backend/src/routes/reviewRoutes');
+const adminRoutes = require('./backend/src/routes/adminRoutes');
+const messageRoutes = require('./backend/src/routes/messageRoutes');
 
 // Initialize app & server
 const app = express();
@@ -76,33 +76,14 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // CORS configuration for local and production deployment (Vercel + Render)
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:5173',
-  'https://localloop-mu.vercel.app',
-];
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (
-        allowedOrigins.includes(origin) ||
-        origin.endsWith('.vercel.app') ||
-        origin.endsWith('.onrender.com')
-      ) {
-        return callback(null, true);
-      }
-      return callback(null, true);
-    },
+    origin: true, // Dynamically reflects origin (e.g. Vercel, localhost)
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
 );
-
-app.options('*', cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
