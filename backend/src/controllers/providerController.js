@@ -1,6 +1,7 @@
 const Provider = require('../models/Provider');
 const Review = require('../models/Review');
 const User = require('../models/User');
+const { geocodeAddress, extractPincode } = require('../utils/geocoder');
 
 const metersToKm = (meters) => {
   return Math.round((meters / 1000) * 10) / 10;
@@ -37,6 +38,7 @@ exports.createProvider = async (req, res) => {
       phone,
       coordinates, // [lng, lat]
       address,
+      pincode,
       pricing,
       availability,
       images,
@@ -49,9 +51,15 @@ exports.createProvider = async (req, res) => {
       });
     }
 
+    let finalPincode = pincode ? pincode.toString().trim() : (extractPincode(address) || '');
     let coords = [77.5946, 12.9716];
-    if (coordinates && Array.isArray(coordinates) && coordinates.length === 2) {
+
+    if (coordinates && Array.isArray(coordinates) && coordinates.length === 2 && !isNaN(coordinates[0]) && !isNaN(coordinates[1])) {
       coords = [parseFloat(coordinates[0]), parseFloat(coordinates[1])];
+    } else {
+      const geo = await geocodeAddress(address, finalPincode);
+      coords = geo.coordinates;
+      if (!finalPincode && geo.pincode) finalPincode = geo.pincode;
     }
 
     const defaultAvailability = availability || [
@@ -73,7 +81,12 @@ exports.createProvider = async (req, res) => {
         type: 'Point',
         coordinates: coords,
       },
+      currentLocation: {
+        type: 'Point',
+        coordinates: coords,
+      },
       address,
+      pincode: finalPincode,
       pricing: {
         type: pricing.type || 'per hour',
         amount: Number(pricing.amount),
@@ -401,6 +414,7 @@ exports.updateProvider = async (req, res) => {
       phone,
       coordinates,
       address,
+      pincode,
       pricing,
       availability,
       images,
@@ -410,7 +424,8 @@ exports.updateProvider = async (req, res) => {
     if (category) provider.category = category.toLowerCase();
     if (description !== undefined) provider.description = description;
     if (phone !== undefined) provider.phone = phone;
-    if (address) provider.address = address;
+    if (address !== undefined) provider.address = address;
+    if (pincode !== undefined) provider.pincode = pincode ? pincode.toString().trim() : '';
     if (pricing) {
       provider.pricing = {
         type: pricing.type || provider.pricing.type,
@@ -421,10 +436,32 @@ exports.updateProvider = async (req, res) => {
     if (images) provider.images = images;
 
     if (coordinates && Array.isArray(coordinates) && coordinates.length === 2) {
+      const coords = [parseFloat(coordinates[0]), parseFloat(coordinates[1])];
       provider.location = {
         type: 'Point',
-        coordinates: [parseFloat(coordinates[0]), parseFloat(coordinates[1])],
+        coordinates: coords,
       };
+      provider.currentLocation = {
+        type: 'Point',
+        coordinates: coords,
+      };
+    } else if (address || pincode) {
+      const activeAddress = address || provider.address;
+      const activePincode = (pincode !== undefined ? pincode : provider.pincode) || extractPincode(activeAddress) || '';
+      const geo = await geocodeAddress(activeAddress, activePincode);
+      if (geo && geo.coordinates) {
+        provider.location = {
+          type: 'Point',
+          coordinates: geo.coordinates,
+        };
+        provider.currentLocation = {
+          type: 'Point',
+          coordinates: geo.coordinates,
+        };
+        if (!provider.pincode && geo.pincode) {
+          provider.pincode = geo.pincode;
+        }
+      }
     }
 
     await provider.save();
@@ -588,6 +625,7 @@ exports.updateProviderLocation = async (req, res) => {
     const lng = parseFloat(coordinates[0]);
     const lat = parseFloat(coordinates[1]);
     provider.currentLocation = { type: 'Point', coordinates: [lng, lat] };
+    provider.location = { type: 'Point', coordinates: [lng, lat] };
     await provider.save();
 
     return res.status(200).json({

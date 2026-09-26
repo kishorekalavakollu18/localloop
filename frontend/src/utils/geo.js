@@ -37,12 +37,16 @@ export const INDIAN_PINCODES = {
   '560064': { name: 'Yelahanka Satellite Town', city: 'Bengaluru', lat: 13.1007, lng: 77.5963 },
 
   // Andhra Pradesh & Telangana
-  '517501': { name: 'Tirupati Central', city: 'Tirupati', lat: 13.6288, lng: 79.4192 },
-  '517507': { name: 'Tirupati SVU Area', city: 'Tirupati', lat: 13.6300, lng: 79.4200 },
+  '523157': { name: 'Chirala / Laxmi Puram / Bapatla', city: 'Chirala', lat: 15.8322, lng: 80.3630 },
+  '522018': { name: 'Tadikonda / Guntur Rural', city: 'Guntur', lat: 16.4118, lng: 80.3791 },
+  '522001': { name: 'Guntur Central / Station', city: 'Guntur', lat: 16.3067, lng: 80.4365 },
+  '522002': { name: 'Guntur Arundelpet / Brodipet', city: 'Guntur', lat: 16.3120, lng: 80.4420 },
+  '523001': { name: 'Ongole Central / Church', city: 'Ongole', lat: 15.5057, lng: 80.0499 },
   '520001': { name: 'Vijayawada One Town', city: 'Vijayawada', lat: 16.5062, lng: 80.6480 },
   '520010': { name: 'Vijayawada Benz Circle', city: 'Vijayawada', lat: 16.4975, lng: 80.6550 },
   '530001': { name: 'Visakhapatnam Town', city: 'Visakhapatnam', lat: 17.6868, lng: 83.2185 },
-  '522001': { name: 'Guntur Central', city: 'Guntur', lat: 16.3067, lng: 80.4365 },
+  '517501': { name: 'Tirupati Central', city: 'Tirupati', lat: 13.6288, lng: 79.4192 },
+  '517507': { name: 'Tirupati SVU Area', city: 'Tirupati', lat: 13.6300, lng: 79.4200 },
   '524001': { name: 'Nellore Central', city: 'Nellore', lat: 14.4426, lng: 79.9865 },
   '518001': { name: 'Kurnool Town', city: 'Kurnool', lat: 15.8281, lng: 78.0373 },
   '515001': { name: 'Anantapur Clock Tower', city: 'Anantapur', lat: 14.6819, lng: 77.6006 },
@@ -61,12 +65,12 @@ export const INDIAN_PINCODES = {
 
 // Quick Select Pincode Hubs
 export const POPULAR_PINCODES = [
-  { pincode: '560038', name: 'Indiranagar' },
-  { pincode: '560095', name: 'Koramangala' },
-  { pincode: '560102', name: 'HSR Layout' },
-  { pincode: '560076', name: 'BTM Layout' },
-  { pincode: '560001', name: 'MG Road' },
-  { pincode: '560066', name: 'Whitefield' },
+  { pincode: '523157', name: 'Chirala' },
+  { pincode: '522018', name: 'Tadikonda / Guntur' },
+  { pincode: '520001', name: 'Vijayawada' },
+  { pincode: '560038', name: 'Indiranagar (BLR)' },
+  { pincode: '560095', name: 'Koramangala (BLR)' },
+  { pincode: '500081', name: 'Hitec City (HYD)' },
 ];
 
 export const CATEGORIES = [
@@ -79,16 +83,14 @@ export const CATEGORIES = [
   { id: 'other', label: 'Appliance & Repair', icon: 'Cpu', color: 'bg-[#2B2621] text-white', stampBg: 'bg-[#EFECE8] text-[#2B2621] border-[#D6CEC4]' },
 ];
 
-// Live Activity Ticker Mock Feeds
+// Live Activity Platform Updates
 export const LIVE_ACTIVITY_TICKER = [
-  '📍 Priya just booked a tutor in HSR Layout (560102)',
-  '⭐ Ramesh\'s HydroTech plumbing received a 5.0★ review in Indiranagar (560038)',
-  '⚡ Anil Spark replaced an MCB panel in Koramangala 5th Block (560095)',
-  '🍱 Annapurna Tiffin dispatched 12 hot meal boxes in BTM Layout (560076)',
-  '🧹 SparklePro completed deep cleaning in MG Road Ashok Nagar (560001)',
-  '🎓 Neha Math Tutoring started a weekend batch in HSR Layout',
-  '🔧 QuickFix AC recharged gas in Whitefield (560066)',
-  '📍 Rahul confirmed a plumbing inspection slot for tomorrow 9 AM',
+  '📍 Real-time GPS location tracking active across local neighborhoods',
+  '⚡ Connect directly with verified local service providers in your area',
+  '🗺️ Enter PIN code and address for turn-by-turn road navigation & live distance',
+  '💬 Instant two-way messaging between customer and service provider',
+  '✅ Live status tracking: Requested ➔ Confirmed ➔ On The Way ➔ Completed',
+  '🚀 Hyperlocal accuracy powered by device GPS and geocoded PIN codes',
 ];
 
 // Extract 6-digit Indian pincode from an address string
@@ -109,7 +111,34 @@ export const resolvePincode = (pincode) => {
     };
   }
 
-  // Fallback heuristic for unlisted Bangalore 560xxx pincodes
+  // Fallback heuristics for unlisted Indian pincodes by state prefix
+  if (cleanCode.startsWith('523') || cleanCode.startsWith('522') || cleanCode.startsWith('520') || cleanCode.startsWith('521') || cleanCode.startsWith('524')) {
+    return {
+      pincode: cleanCode,
+      name: `Andhra Coastal Zone (${cleanCode})`,
+      city: 'Andhra Pradesh',
+      lat: 16.2,
+      lng: 80.4,
+    };
+  }
+  if (cleanCode.startsWith('51')) {
+    return {
+      pincode: cleanCode,
+      name: `Rayalaseema Zone (${cleanCode})`,
+      city: 'Andhra Pradesh',
+      lat: 14.4,
+      lng: 78.8,
+    };
+  }
+  if (cleanCode.startsWith('50')) {
+    return {
+      pincode: cleanCode,
+      name: `Telangana Zone (${cleanCode})`,
+      city: 'Hyderabad',
+      lat: 17.385,
+      lng: 78.4867,
+    };
+  }
   if (cleanCode.startsWith('560')) {
     return {
       pincode: cleanCode,
@@ -176,9 +205,9 @@ export const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
 export const calculateAccurateDistance = (userLocation, userPincode, provider) => {
   if (!provider) return null;
 
-  const provPincode = extractPincode(provider.address);
-  const provLat = provider.location?.coordinates?.[1];
-  const provLng = provider.location?.coordinates?.[0];
+  const provPincode = provider.pincode || extractPincode(provider.address);
+  const provLat = provider.currentLocation?.coordinates?.[1] || provider.location?.coordinates?.[1];
+  const provLng = provider.currentLocation?.coordinates?.[0] || provider.location?.coordinates?.[0];
 
   // 1. If user entered a pincode and it matches the provider's pincode exactly:
   if (userPincode && provPincode && userPincode.trim() === provPincode.trim()) {
@@ -186,8 +215,19 @@ export const calculateAccurateDistance = (userLocation, userPincode, provider) =
   }
 
   // 2. If userLocation has lat and lng, compute exact Haversine distance
-  if (userLocation && userLocation.lat && userLocation.lng && provLat && provLng) {
-    const dist = calculateDistanceKm(userLocation.lat, userLocation.lng, provLat, provLng);
+  let userLat = userLocation?.lat;
+  let userLng = userLocation?.lng;
+
+  if ((!userLat || !userLng) && userPincode) {
+    const resolvedUser = resolvePincode(userPincode);
+    if (resolvedUser) {
+      userLat = resolvedUser.lat;
+      userLng = resolvedUser.lng;
+    }
+  }
+
+  if (userLat && userLng && provLat && provLng) {
+    const dist = calculateDistanceKm(userLat, userLng, provLat, provLng);
     return dist;
   }
 

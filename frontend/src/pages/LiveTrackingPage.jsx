@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { bookingService, API_URL } from '../services/api';
+import { resolvePincode } from '../utils/geo';
 import { io } from 'socket.io-client';
 import L from 'leaflet';
 import ChatModal from '../components/ChatModal';
@@ -98,11 +99,15 @@ const LiveTrackingPage = () => {
         setBooking(b);
 
         // Resolve Customer Coordinates [lng, lat] -> [lat, lng]
-        let cCoords = [12.9716, 77.5946]; // default Bengaluru central
+        let cCoords = null;
         const cust = b.customerLocation?.coordinates;
         if (Array.isArray(cust) && cust.length === 2 && !isNaN(cust[0]) && !isNaN(cust[1])) {
           cCoords = [parseFloat(cust[1]), parseFloat(cust[0])];
+        } else if (b.customerPincode || b.customerId?.pincode) {
+          const resolved = resolvePincode(b.customerPincode || b.customerId?.pincode);
+          if (resolved) cCoords = [resolved.lat, resolved.lng];
         }
+        if (!cCoords) cCoords = [15.8322, 80.3630];
         setCustomerCoords(cCoords);
 
         // Resolve Provider Coordinates [lng, lat] -> [lat, lng]
@@ -114,6 +119,9 @@ const LiveTrackingPage = () => {
 
         if (Array.isArray(prov) && prov.length === 2 && !isNaN(prov[0]) && !isNaN(prov[1])) {
           pCoords = [parseFloat(prov[1]), parseFloat(prov[0])];
+        } else if (b.providerId?.pincode) {
+          const resolved = resolvePincode(b.providerId.pincode);
+          if (resolved) pCoords = [resolved.lat, resolved.lng];
         }
 
         // If provider coords are identical or missing, ensure distinct origin so real route shows
@@ -149,6 +157,9 @@ const LiveTrackingPage = () => {
             if (Array.isArray(routeRes.route.steps)) setRouteSteps(routeRes.route.steps);
             if (routeRes.providerCoordinates) {
               setProviderCoords([routeRes.providerCoordinates[1], routeRes.providerCoordinates[0]]);
+            }
+            if (routeRes.customerCoordinates) {
+              setCustomerCoords([routeRes.customerCoordinates[1], routeRes.customerCoordinates[0]]);
             }
           }
         } catch (rErr) {

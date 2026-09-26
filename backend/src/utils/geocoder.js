@@ -27,19 +27,36 @@ const INDIAN_PINCODE_COORDINATES = {
   '560064': { name: 'Yelahanka Satellite Town', city: 'Bengaluru', lat: 13.1007, lng: 77.5963 },
 
   // Andhra Pradesh & Telangana
+  '523157': { name: 'Laxmipuram / Chirala', city: 'Chirala', lat: 15.8322, lng: 80.3630 },
+  '523155': { name: 'Chirala Town / Station', city: 'Chirala', lat: 15.8200, lng: 80.3500 },
+  '522018': { name: 'Tadikonda / Guntur Rural', city: 'Guntur', lat: 16.4118, lng: 80.3791 },
+  '522001': { name: 'Guntur Central / Market', city: 'Guntur', lat: 16.3067, lng: 80.4365 },
+  '522002': { name: 'Guntur Arundelpet', city: 'Guntur', lat: 16.3010, lng: 80.4420 },
+  '522004': { name: 'Guntur Brodipet', city: 'Guntur', lat: 16.3080, lng: 80.4350 },
+  '522006': { name: 'Guntur Collectorate', city: 'Guntur', lat: 16.3120, lng: 80.4480 },
+  '522007': { name: 'Guntur Pattabhipuram', city: 'Guntur', lat: 16.2950, lng: 80.4280 },
+  '522201': { name: 'Tenali Central', city: 'Tenali', lat: 16.2430, lng: 80.6400 },
+  '522124': { name: 'Bapatla Town', city: 'Bapatla', lat: 15.9042, lng: 80.4674 },
+  '523001': { name: 'Ongole Central', city: 'Ongole', lat: 15.5057, lng: 80.0499 },
+  '523002': { name: 'Ongole Kurnool Road', city: 'Ongole', lat: 15.5120, lng: 80.0400 },
+  '520001': { name: 'Vijayawada One Town', city: 'Vijayawada', lat: 16.5062, lng: 80.6480 },
+  '520002': { name: 'Vijayawada Governorpet', city: 'Vijayawada', lat: 16.5120, lng: 80.6330 },
+  '520010': { name: 'Vijayawada Benz Circle', city: 'Vijayawada', lat: 16.4975, lng: 80.6550 },
+  '520008': { name: 'Vijayawada Patamata', city: 'Vijayawada', lat: 16.4950, lng: 80.6620 },
+  '530001': { name: 'Visakhapatnam Town', city: 'Visakhapatnam', lat: 17.6868, lng: 83.2185 },
   '517501': { name: 'Tirupati Central', city: 'Tirupati', lat: 13.6288, lng: 79.4192 },
   '517507': { name: 'Tirupati SVU Area', city: 'Tirupati', lat: 13.6300, lng: 79.4200 },
-  '520001': { name: 'Vijayawada One Town', city: 'Vijayawada', lat: 16.5062, lng: 80.6480 },
-  '520010': { name: 'Vijayawada Benz Circle', city: 'Vijayawada', lat: 16.4975, lng: 80.6550 },
-  '530001': { name: 'Visakhapatnam Town', city: 'Visakhapatnam', lat: 17.6868, lng: 83.2185 },
-  '522001': { name: 'Guntur Central', city: 'Guntur', lat: 16.3067, lng: 80.4365 },
   '524001': { name: 'Nellore Central', city: 'Nellore', lat: 14.4426, lng: 79.9865 },
   '518001': { name: 'Kurnool Town', city: 'Kurnool', lat: 15.8281, lng: 78.0373 },
   '515001': { name: 'Anantapur Clock Tower', city: 'Anantapur', lat: 14.6819, lng: 77.6006 },
   '516001': { name: 'Kadapa Central', city: 'Kadapa', lat: 14.4673, lng: 78.8242 },
-  '500081': { name: 'Hyderabad Hitec City / Madhapur', city: 'Hyderabad', lat: 17.4474, lng: 78.3762 },
+  '500001': { name: 'Hyderabad Abids / Koti', city: 'Hyderabad', lat: 17.3916, lng: 78.4739 },
+  '500016': { name: 'Hyderabad Begumpet', city: 'Hyderabad', lat: 17.4447, lng: 78.4664 },
   '500034': { name: 'Hyderabad Banjara Hills', city: 'Hyderabad', lat: 17.4156, lng: 78.4354 },
   '500032': { name: 'Hyderabad Gachibowli', city: 'Hyderabad', lat: 17.4401, lng: 78.3489 },
+  '500081': { name: 'Hyderabad Hitec City / Madhapur', city: 'Hyderabad', lat: 17.4474, lng: 78.3762 },
+  '500072': { name: 'Hyderabad Kukatpally', city: 'Hyderabad', lat: 17.4875, lng: 78.4039 },
+  '500084': { name: 'Hyderabad Kondapur', city: 'Hyderabad', lat: 17.4699, lng: 78.3578 },
 
   // Major Metros
   '400050': { name: 'Mumbai Bandra West', city: 'Mumbai', lat: 19.0596, lng: 72.8295 },
@@ -75,19 +92,10 @@ async function geocodeAddress(address, pincode) {
     };
   }
 
-  // 2. Fallback heuristic for any 560xxx Bangalore pincode
-  if (pin && pin.startsWith('560')) {
-    return {
-      coordinates: [77.5946, 12.9716],
-      pincode: pin,
-      formattedAddress: address || `Bengaluru Area (${pin})`,
-      source: 'pincode_zone',
-    };
-  }
-
-  // 3. Online Geocoding via Nominatim
-  const query = [address, pin, 'India'].filter(Boolean).join(', ');
-  if (query.length > 5) {
+  // 2. Online Geocoding via Nominatim with full address query
+  const cleanAddress = address && address !== pin ? address : '';
+  const query = [cleanAddress, pin, 'India'].filter(Boolean).join(', ');
+  if (query.length > 3) {
     try {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
       const response = await fetch(url, {
@@ -108,6 +116,98 @@ async function geocodeAddress(address, pincode) {
       }
     } catch (err) {
       console.warn('Online geocoding fetch error:', err.message);
+    }
+  }
+
+  // 2b. If full address wasn't resolved by Nominatim, search specifically for the 6-digit PIN code!
+  if (pin && /^[1-9][0-9]{5}$/.test(pin)) {
+    try {
+      const pinUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(pin + ', India')}&format=json&limit=1`;
+      const response = await fetch(pinUrl, {
+        headers: { 'User-Agent': 'LocalLoop-Hyperlocal-App/1.0' },
+      });
+      if (response.ok) {
+        const results = await response.json();
+        if (results && results.length > 0) {
+          const lat = parseFloat(results[0].lat);
+          const lon = parseFloat(results[0].lon);
+          return {
+            coordinates: [lon, lat],
+            pincode: pin,
+            formattedAddress: address || results[0].display_name,
+            source: 'nominatim_pincode',
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Nominatim PIN geocoding fetch error:', err.message);
+    }
+  }
+
+  // 3. Regional Zone Heuristics based on first 2 digits of Indian PIN code
+  if (pin) {
+    if (pin.startsWith('52') || pin.startsWith('53')) {
+      // Coastal Andhra (Guntur / Vijayawada corridor)
+      return {
+        coordinates: [80.4365, 16.3067],
+        pincode: pin,
+        formattedAddress: address || `Andhra Pradesh Area (${pin})`,
+        source: 'zone_ap',
+      };
+    }
+    if (pin.startsWith('51')) {
+      // Rayalaseema AP (Tirupati / Kurnool corridor)
+      return {
+        coordinates: [79.4192, 13.6288],
+        pincode: pin,
+        formattedAddress: address || `Rayalaseema AP (${pin})`,
+        source: 'zone_ap_south',
+      };
+    }
+    if (pin.startsWith('50')) {
+      // Telangana (Hyderabad corridor)
+      return {
+        coordinates: [78.4867, 17.3850],
+        pincode: pin,
+        formattedAddress: address || `Telangana Area (${pin})`,
+        source: 'zone_tg',
+      };
+    }
+    if (pin.startsWith('56') || pin.startsWith('57') || pin.startsWith('58') || pin.startsWith('59')) {
+      // Karnataka
+      return {
+        coordinates: [77.5946, 12.9716],
+        pincode: pin,
+        formattedAddress: address || `Karnataka Area (${pin})`,
+        source: 'zone_ka',
+      };
+    }
+    if (pin.startsWith('60') || pin.startsWith('61') || pin.startsWith('62') || pin.startsWith('63') || pin.startsWith('64')) {
+      // Tamil Nadu
+      return {
+        coordinates: [80.2707, 13.0827],
+        pincode: pin,
+        formattedAddress: address || `Tamil Nadu Area (${pin})`,
+        source: 'zone_tn',
+      };
+    }
+    if (pin.startsWith('40') || pin.startsWith('41') || pin.startsWith('42') || pin.startsWith('43') || pin.startsWith('44')) {
+      // Maharashtra
+      return {
+        coordinates: [72.8777, 19.0760],
+        pincode: pin,
+        formattedAddress: address || `Maharashtra Area (${pin})`,
+        source: 'zone_mh',
+      };
+    }
+    if (pin.startsWith('11')) {
+      // Delhi
+      return {
+        coordinates: [77.2090, 28.6139],
+        pincode: pin,
+        formattedAddress: address || `Delhi Area (${pin})`,
+        source: 'zone_dl',
+      };
     }
   }
 

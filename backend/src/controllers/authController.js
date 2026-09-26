@@ -15,7 +15,7 @@ const generateToken = (id) => {
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role, phone } = req.body;
+    const { name, email, password, role, phone, address, pincode, coordinates } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -33,14 +33,37 @@ exports.register = async (req, res) => {
       });
     }
 
+    let finalCoords = coordinates;
+    let finalPincode = pincode ? pincode.toString().trim() : '';
+    let finalAddress = address ? address.toString().trim() : '';
+
+    if (!finalCoords || !Array.isArray(finalCoords) || finalCoords.length !== 2) {
+      if (finalAddress || finalPincode) {
+        const geo = await geocodeAddress(finalAddress, finalPincode);
+        finalCoords = geo.coordinates;
+        if (!finalPincode && geo.pincode) finalPincode = geo.pincode;
+      }
+    }
+
     // Create user
-    const user = await User.create({
+    const userData = {
       name,
       email: email.toLowerCase(),
       password,
       role: role || 'customer',
       phone: phone || '',
-    });
+      address: finalAddress,
+      pincode: finalPincode,
+    };
+
+    if (finalCoords && Array.isArray(finalCoords) && finalCoords.length === 2) {
+      userData.location = {
+        type: 'Point',
+        coordinates: [parseFloat(finalCoords[0]), parseFloat(finalCoords[1])],
+      };
+    }
+
+    const user = await User.create(userData);
 
     const token = generateToken(user._id);
 
@@ -54,6 +77,9 @@ exports.register = async (req, res) => {
         email: user.email,
         role: user.role,
         phone: user.phone,
+        address: user.address,
+        pincode: user.pincode,
+        location: user.location,
         createdAt: user.createdAt,
       },
     });

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { bookingService, API_URL } from '../services/api';
+import { bookingService, authService, API_URL } from '../services/api';
+import { resolvePincode } from '../utils/geo';
 import { io } from 'socket.io-client';
 import StatusBadge from '../components/StatusBadge';
 import ReviewModal from '../components/ReviewModal';
@@ -21,6 +22,8 @@ import {
   Star,
   CheckCheck,
   Navigation,
+  Edit2,
+  Save,
 } from 'lucide-react';
 
 const CustomerDashboard = () => {
@@ -29,6 +32,35 @@ const CustomerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterTab, setFilterTab] = useState('all'); // 'all', 'active', 'completed'
+
+  // Location & PIN Code state
+  const [address, setAddress] = useState(user?.address || '');
+  const [pincode, setPincode] = useState(user?.pincode || '');
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [updatingLocation, setUpdatingLocation] = useState(false);
+  const [locationSuccess, setLocationSuccess] = useState('');
+
+  useEffect(() => {
+    if (user?.address) setAddress(user.address);
+    if (user?.pincode) setPincode(user.pincode);
+  }, [user?.address, user?.pincode]);
+
+  const handleSaveLocation = async (e) => {
+    e.preventDefault();
+    setUpdatingLocation(true);
+    try {
+      const res = await authService.updateLocation({ address, pincode });
+      if (res.success) {
+        setLocationSuccess('Your address and PIN code updated successfully!');
+        setIsEditingLocation(false);
+        setTimeout(() => setLocationSuccess(''), 3500);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to update location.');
+    } finally {
+      setUpdatingLocation(false);
+    }
+  };
 
   // Review & Chat modal state
   const [reviewBooking, setReviewBooking] = useState(null);
@@ -138,6 +170,89 @@ const CustomerDashboard = () => {
               + Find Service
             </Link>
           </div>
+        </div>
+
+        {/* Customer Delivery Address & PIN Code Settings Bar */}
+        <div className="bg-white rounded-3xl p-5 border border-[#E8DFC9] shadow-xs">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-orange-50 border border-orange-200/60 flex items-center justify-center text-[#C6511F]">
+                <MapPin className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Delivery Location & PIN Code
+                </span>
+                <p className="text-xs sm:text-sm font-bold text-slate-800">
+                  {address || 'No street address saved'} {pincode ? `(PIN: ${pincode})` : ''}
+                </p>
+                {pincode && resolvePincode(pincode)?.name && (
+                  <span className="text-[11px] font-medium text-emerald-700 flex items-center gap-1 mt-0.5">
+                    <Compass className="w-3 h-3" /> {resolvePincode(pincode).name}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsEditingLocation(!isEditingLocation)}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-[#FBF7F0] flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Edit2 className="w-3.5 h-3.5 text-[#C6511F]" />
+              <span>{isEditingLocation ? 'Cancel' : 'Edit Location / PIN'}</span>
+            </button>
+          </div>
+
+          {locationSuccess && (
+            <p className="text-xs font-semibold text-emerald-700 mt-3 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4" /> {locationSuccess}
+            </p>
+          )}
+
+          {isEditingLocation && (
+            <form onSubmit={handleSaveLocation} className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    House/Flat, Street, Area Address
+                  </label>
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="e.g. Laxmi Puram, Chirala"
+                    required
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-[#C6511F] focus:border-[#C6511F]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    6-Digit PIN Code
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={pincode}
+                    onChange={(e) => setPincode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="e.g. 523157"
+                    required
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold tracking-wider focus:ring-2 focus:ring-[#C6511F] focus:border-[#C6511F]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="submit"
+                  disabled={updatingLocation}
+                  className="px-4 py-2 bg-[#C6511F] text-white text-xs font-bold rounded-xl hover:bg-[#B04316] transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  {updatingLocation ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  <span>Save Location</span>
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
         {/* Filters and Search Tabs */}

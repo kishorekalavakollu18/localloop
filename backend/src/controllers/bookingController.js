@@ -427,9 +427,20 @@ exports.startTracking = async (req, res) => {
     let providerCoords = coordinates;
 
     if (!providerCoords || !Array.isArray(providerCoords) || providerCoords.length !== 2) {
-      providerCoords = booking.providerId.currentLocation?.coordinates || booking.providerId.location?.coordinates || [77.5946, 12.9716];
+      providerCoords = booking.providerId.currentLocation?.coordinates || booking.providerId.location?.coordinates;
+      if (!providerCoords || providerCoords.length !== 2) {
+        const geo = await geocodeAddress(booking.providerId.address, booking.providerId.pincode);
+        providerCoords = geo.coordinates;
+      }
     } else {
       providerCoords = [parseFloat(providerCoords[0]), parseFloat(providerCoords[1])];
+    }
+
+    if (!booking.customerLocation?.coordinates || booking.customerLocation.coordinates.length !== 2) {
+      if (booking.customerAddress || booking.customerPincode) {
+        const geo = await geocodeAddress(booking.customerAddress, booking.customerPincode);
+        booking.customerLocation = { type: 'Point', coordinates: geo.coordinates };
+      }
     }
 
     // Set tracking active and status to in_progress
@@ -444,7 +455,7 @@ exports.startTracking = async (req, res) => {
     }
 
     // Calculate initial route if customer coordinates exist
-    if (booking.customerLocation?.coordinates?.length === 2) {
+    if (booking.customerLocation?.coordinates?.length === 2 && providerCoords) {
       const routeInfo = await getDrivingRoute(providerCoords, booking.customerLocation.coordinates);
       if (routeInfo) {
         booking.liveTracking.distanceRemainingKm = routeInfo.distanceKm;
@@ -625,13 +636,28 @@ exports.getBookingRoute = async (req, res) => {
         ? booking.liveTracking.currentProviderLocation.coordinates
         : booking.providerId?.currentLocation?.coordinates || booking.providerId?.location?.coordinates;
 
-    let customerCoords =
-      booking.customerLocation?.coordinates?.length === 2
-        ? booking.customerLocation.coordinates
-        : [77.5946, 12.9716];
+    if (!providerCoords || providerCoords.length !== 2) {
+      if (booking.providerId?.address || booking.providerId?.pincode) {
+        const geo = await geocodeAddress(booking.providerId.address, booking.providerId.pincode);
+        providerCoords = geo.coordinates;
+      }
+    }
+
+    let customerCoords = booking.customerLocation?.coordinates;
+    if (!customerCoords || customerCoords.length !== 2) {
+      if (booking.customerAddress || booking.customerPincode) {
+        const geo = await geocodeAddress(booking.customerAddress, booking.customerPincode);
+        customerCoords = geo.coordinates;
+        booking.customerLocation = { type: 'Point', coordinates: geo.coordinates };
+        await booking.save();
+      }
+    }
 
     if (!providerCoords || providerCoords.length !== 2) {
-      providerCoords = [77.6408, 12.9784];
+      providerCoords = [80.3791, 16.4118];
+    }
+    if (!customerCoords || customerCoords.length !== 2) {
+      customerCoords = [80.3630, 15.8322];
     }
 
     const routeInfo = await getDrivingRoute(providerCoords, customerCoords);

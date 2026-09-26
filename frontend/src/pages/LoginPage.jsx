@@ -227,42 +227,7 @@ const LoginPage = () => {
         </button>
       </form>
 
-      {/* Quick 1-Click Demo Accounts */}
-      <div className="pt-4 border-t border-slate-200/80 space-y-2.5">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 text-center flex items-center justify-center gap-1.5">
-          <UserCheck className="w-3.5 h-3.5 text-terracotta" /> 1-Click Demo Accounts
-        </p>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <button
-            type="button"
-            onClick={() => handleQuickLogin('rahul@example.com', 'password123')}
-            className="px-3 py-2 rounded-xl bg-orange-50 border border-orange-200/60 text-terracotta hover:bg-orange-100/70 font-semibold text-left transition-colors flex items-center gap-1.5"
-          >
-            <span>🙋‍♂️</span> Customer Rahul
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickLogin('ramesh.plumbing@example.com', 'password123')}
-            className="px-3 py-2 rounded-xl bg-[#F7EBE5] border border-[#F0D5C9] text-[#C6511F] hover:bg-[#F2D7CB] font-semibold text-left transition-colors flex items-center gap-1.5"
-          >
-            <span>🔧</span> Plumber Ramesh
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickLogin('anil.spark@example.com', 'password123')}
-            className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200/60 text-amber-700 hover:bg-amber-100/70 font-semibold text-left transition-colors flex items-center gap-1.5"
-          >
-            <span>⚡</span> Electrician Anil
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickLogin('neha.tutor@example.com', 'password123')}
-            className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-700 hover:bg-emerald-100/70 font-semibold text-left transition-colors flex items-center gap-1.5"
-          >
-            <span>📚</span> Tutor Neha
-          </button>
-        </div>
-      </div>
+
 
       {/* Switch to Signup Link */}
       <div className="text-center pt-1">

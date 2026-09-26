@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   Navigation,
   ArrowRight,
+  Compass,
 } from 'lucide-react';
 
 const RegisterPage = () => {
@@ -35,16 +36,17 @@ const RegisterPage = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [pincode, setPincode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // Provider specific fields
   const [businessName, setBusinessName] = useState('');
   const [category, setCategory] = useState('plumber');
   const [description, setDescription] = useState('');
-  const [address, setAddress] = useState('');
   const [pricingAmount, setPricingAmount] = useState('350');
   const [pricingType, setPricingType] = useState('per hour');
-  const [coordinates, setCoordinates] = useState([77.5946, 12.9716]); // [lng, lat]
+  const [coordinates, setCoordinates] = useState([80.3630, 15.8322]); // [lng, lat]
   const [detectingLocation, setDetectingLocation] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -91,7 +93,12 @@ const RegisterPage = () => {
   };
 
   const validateBusinessName = (val) => (role === 'provider' && !val.trim() ? 'Business name is required' : '');
-  const validateAddress = (val) => (role === 'provider' && !val.trim() ? 'Address is required' : '');
+  const validateAddress = (val) => (!val.trim() ? 'Address / area is required' : '');
+  const validatePincode = (val) => {
+    if (!val) return 'PIN code is required';
+    if (!/^\d{6}$/.test(val.trim())) return 'Please enter a valid 6-digit PIN code';
+    return '';
+  };
 
   const handleBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -110,7 +117,7 @@ const RegisterPage = () => {
       const coords = await getUserCoordinates();
       setCoordinates([coords.lng, coords.lat]);
     } catch (err) {
-      alert('Could not retrieve live GPS location. Using default coordinates.');
+      alert('Could not retrieve live GPS location. You can enter your 6-digit PIN code manually.');
     } finally {
       setDetectingLocation(false);
     }
@@ -153,6 +160,15 @@ const RegisterPage = () => {
     setLoading(true);
 
     try {
+      const activePin = pincode ? pincode.trim() : (extractPincode(address) || '');
+      let finalCoordinates = coordinates;
+      if (activePin) {
+        const resolved = resolvePincode(activePin);
+        if (resolved) {
+          finalCoordinates = [resolved.lng, resolved.lat];
+        }
+      }
+
       // 1. Register User Account
       const authRes = await register({
         name,
@@ -160,25 +176,20 @@ const RegisterPage = () => {
         password,
         role,
         phone,
+        address,
+        pincode: activePin,
+        coordinates: finalCoordinates,
       });
 
       // 2. If provider role, create provider profile
       if (role === 'provider') {
-        let finalCoordinates = coordinates;
-        const foundPincode = extractPincode(address);
-        if (foundPincode) {
-          const resolved = resolvePincode(foundPincode);
-          if (resolved) {
-            finalCoordinates = [resolved.lng, resolved.lat];
-          }
-        }
-
         const provRes = await providerService.create({
           businessName,
           category,
           description,
           phone,
           address,
+          pincode: activePin,
           coordinates: finalCoordinates,
           pricing: {
             type: pricingType,
@@ -303,7 +314,7 @@ const RegisterPage = () => {
                 if (touched.email) setFieldErrors((prev) => ({ ...prev, email: validateEmail(e.target.value) }));
               }}
               onBlur={() => handleBlur('email')}
-              placeholder="aditi@example.com"
+              placeholder="you@email.com"
               className={`w-full pl-10 pr-4 py-2.5 auth-input rounded-2xl border ${
                 touched.email && fieldErrors.email
                   ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20'
@@ -390,6 +401,71 @@ const RegisterPage = () => {
           </div>
         </div>
 
+        {/* Customer Address & Pincode Manual Setup */}
+        {role === 'customer' && (
+          <div className="pt-3 border-t border-slate-200/80 space-y-3 animate-form-entrance">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-charcoal/80 flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-terracotta" /> Service Address & PIN Code
+              </h3>
+              <button
+                type="button"
+                onClick={handleDetectLocation}
+                disabled={detectingLocation}
+                className="text-[11px] font-bold text-terracotta hover:underline flex items-center gap-1"
+              >
+                <Navigation className="w-3 h-3" />
+                <span>{detectingLocation ? 'Locating...' : 'Use My GPS'}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-semibold text-charcoal mb-1">
+                  Street / Area Address *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={address}
+                  onChange={(e) => {
+                    setAddress(e.target.value);
+                    if (touched.address) setFieldErrors((prev) => ({ ...prev, address: validateAddress(e.target.value) }));
+                  }}
+                  onBlur={() => handleBlur('address')}
+                  placeholder="e.g. Laxmi Puram, Chirala"
+                  className="w-full px-3 py-2 auth-input rounded-xl border border-slate-300/80 bg-white/80 text-xs text-charcoal font-medium"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-charcoal mb-1">
+                  6-Digit PIN *
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  required
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="e.g. 523157"
+                  className="w-full px-3 py-2 auth-input rounded-xl border border-slate-300/80 bg-white/80 text-xs text-charcoal font-bold tracking-wider"
+                />
+              </div>
+            </div>
+
+            {pincode && (
+              <div className="text-[11px] text-slate-600 font-medium px-1 flex items-center gap-1.5">
+                <Compass className="w-3.5 h-3.5 text-terracotta" />
+                <span>
+                  {resolvePincode(pincode)?.name
+                    ? `Detected: ${resolvePincode(pincode).name}`
+                    : `PIN: ${pincode} (Exact GPS coordinates will be geocoded)`}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Provider Specific Profile Setup */}
         {role === 'provider' && (
           <div className="pt-3 border-t border-slate-200/80 space-y-3 animate-form-entrance">
@@ -434,10 +510,10 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="sm:col-span-2">
                 <label className="block text-[11px] font-semibold text-charcoal mb-1">
-                  Service Address / Pincode *
+                  Business / Shop Address *
                 </label>
                 <input
                   type="text"
@@ -448,26 +524,52 @@ const RegisterPage = () => {
                     if (touched.address) setFieldErrors((prev) => ({ ...prev, address: validateAddress(e.target.value) }));
                   }}
                   onBlur={() => handleBlur('address')}
-                  placeholder="e.g. 12th Main Road, Indiranagar, Bangalore"
+                  placeholder="e.g. Tadikonda Main Road, Guntur"
                   className="w-full px-3 py-2 auth-input rounded-xl border border-slate-300/80 bg-white/80 text-xs text-charcoal font-medium"
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-semibold text-charcoal mb-1">
-                  Business Phone Number *
+                  6-Digit PIN *
                 </label>
-                <div className="relative">
-                  <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="tel"
-                    required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. +91 98765 00000"
-                    className="w-full pl-9 pr-3 py-2 auth-input rounded-xl border border-slate-300/80 bg-white/80 text-xs text-charcoal font-semibold"
-                  />
-                </div>
+                <input
+                  type="text"
+                  maxLength={6}
+                  required
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="e.g. 522018"
+                  className="w-full px-3 py-2 auth-input rounded-xl border border-slate-300/80 bg-white/80 text-xs text-charcoal font-bold tracking-wider"
+                />
+              </div>
+            </div>
+
+            {pincode && (
+              <div className="text-[11px] text-slate-600 font-medium px-1 flex items-center gap-1.5">
+                <Compass className="w-3.5 h-3.5 text-terracotta" />
+                <span>
+                  {resolvePincode(pincode)?.name
+                    ? `Detected: ${resolvePincode(pincode).name}`
+                    : `PIN: ${pincode} (Exact GPS coordinates will be geocoded)`}
+                </span>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[11px] font-semibold text-charcoal mb-1">
+                Business Phone Number *
+              </label>
+              <div className="relative">
+                <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. +91 98765 00000"
+                  className="w-full pl-9 pr-3 py-2 auth-input rounded-xl border border-slate-300/80 bg-white/80 text-xs text-charcoal font-semibold"
+                />
               </div>
             </div>
 
