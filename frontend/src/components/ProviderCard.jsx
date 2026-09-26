@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, MapPin, CheckCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Star, MapPin, CheckCircle, ArrowRight, ShieldCheck, Phone } from 'lucide-react';
 import { getImageUrl } from '../services/api';
 
 const DEFAULT_IMAGE =
@@ -12,6 +12,7 @@ const ProviderCard = ({
   onHover = () => {},
 }) => {
   const imageUrl = getImageUrl(provider.images?.[0]);
+  const phone = provider.user?.phone || provider.userId?.phone || provider.phone || '+91 98765 00000';
 
   return (
     <div
@@ -81,9 +82,23 @@ const ProviderCard = ({
             {provider.description || 'Professional local provider with verified credentials.'}
           </p>
 
-          <div className="flex items-center gap-1 text-xs text-[#8C8275] truncate pt-1 font-medium">
-            <MapPin className="w-3.5 h-3.5 text-[#C6511F] shrink-0" />
-            <span className="truncate">{provider.address}</span>
+          <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+            <div className="flex items-center gap-1 text-[#8C8275] truncate font-medium flex-1">
+              <MapPin className="w-3.5 h-3.5 text-[#C6511F] shrink-0" />
+              <span className="truncate">{provider.address}</span>
+            </div>
+
+            {phone && (
+              <a
+                href={`tel:${phone}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#C6511F] bg-[#F7EBE5] px-2 py-0.5 rounded-md hover:bg-[#F0D5C9] transition-colors shrink-0"
+                title="Call provider"
+              >
+                <Phone className="w-3 h-3 text-[#C6511F]" />
+                <span>{phone}</span>
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -100,13 +115,27 @@ const ProviderCard = ({
           </div>
         </div>
 
-        <Link
-          to={`/provider/${provider._id}`}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-heading font-extrabold text-white bg-[#C6511F] hover:bg-[#A84116] shadow-sm shadow-[#C6511F]/20 group-hover:shadow-md transition-all hover:scale-105"
-        >
-          <span>Book Now</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex items-center gap-2">
+          {phone && (
+            <a
+              href={`tel:${phone}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-full text-xs font-heading font-extrabold text-[#C6511F] bg-[#F7EBE5] border border-[#F0D5C9] hover:bg-[#F0D5C9] transition-all"
+              title="Call Provider Now"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              <span>Call</span>
+            </a>
+          )}
+
+          <Link
+            to={`/provider/${provider._id}`}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-heading font-extrabold text-white bg-[#C6511F] hover:bg-[#A84116] shadow-sm shadow-[#C6511F]/20 group-hover:shadow-md transition-all hover:scale-105"
+          >
+            <span>Book Now</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
     </div>
   );
