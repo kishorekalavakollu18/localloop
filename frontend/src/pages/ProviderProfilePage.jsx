@@ -59,7 +59,7 @@ const ProviderProfilePage = () => {
   if (loading) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center">
-        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-3" />
+        <Loader2 className="w-10 h-10 text-[#C6511F] animate-spin mb-3" />
         <p className="text-sm font-semibold text-slate-600">Loading service profile...</p>
       </div>
     );
@@ -73,7 +73,7 @@ const ProviderProfilePage = () => {
         <p className="text-sm text-slate-500">{error || 'This provider listing may have been moved or removed.'}</p>
         <Link
           to="/discover"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C6511F] hover:bg-[#B04316] text-white rounded-xl font-bold text-sm shadow-md shadow-[#C6511F]/20"
         >
           <ChevronLeft className="w-4 h-4" />
           Back to Discover
@@ -91,7 +91,7 @@ const ProviderProfilePage = () => {
         <div className="flex items-center justify-between">
           <Link
             to="/discover"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-indigo-600 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#C6511F] transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
             <span>Back to Map & Search</span>
@@ -128,7 +128,7 @@ const ProviderProfilePage = () => {
               {/* Info */}
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#F7EBE5] text-[#C6511F] border border-[#F0D5C9]">
                     {provider.category}
                   </span>
                   {provider.isVerified && (
@@ -183,7 +183,7 @@ const ProviderProfilePage = () => {
               <div className="w-full space-y-2">
                 <button
                   onClick={() => setIsBookingOpen(true)}
-                  className="w-full px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-md shadow-indigo-600/30 transition-all hover:scale-[1.02]"
+                  className="w-full px-6 py-3 bg-[#C6511F] hover:bg-[#B04316] text-white font-bold text-sm rounded-xl shadow-md shadow-[#C6511F]/20 transition-all hover:scale-[1.02]"
                 >
                   Book Appointment
                 </button>
@@ -303,7 +303,7 @@ const ProviderProfilePage = () => {
           <div className="space-y-6">
             {/* Availability Schedule Card */}
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-              <div className="flex items-center gap-2 text-indigo-600">
+              <div className="flex items-center gap-2 text-[#C6511F]">
                 <Clock className="w-5 h-5" />
                 <h3 className="font-bold text-base text-slate-900">Weekly Schedule</h3>
               </div>
@@ -336,7 +336,7 @@ const ProviderProfilePage = () => {
 
               <button
                 onClick={() => setIsBookingOpen(true)}
-                className="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs transition-colors"
+                className="w-full py-2.5 bg-[#F7EBE5] hover:bg-[#F0D5C9] text-[#C6511F] font-bold rounded-xl text-xs transition-colors border border-[#F0D5C9]"
               >
                 Select Time Slot →
               </button>

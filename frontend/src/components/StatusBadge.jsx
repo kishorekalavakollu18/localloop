@@ -10,7 +10,7 @@ const StatusBadge = ({ status }) => {
     },
     confirmed: {
       label: 'Confirmed',
-      bg: 'bg-blue-50 text-blue-700 border-blue-200',
+      bg: 'bg-[#EBF3EC] text-[#2D5A27] border-[#CFDFD0]',
       icon: CheckCircle2,
     },
     completed: {

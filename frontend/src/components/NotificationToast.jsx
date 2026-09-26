@@ -62,7 +62,7 @@ const NotificationToast = () => {
                 : isCancelled
                 ? 'bg-rose-950/95 text-white border-rose-500/40 ring-2 ring-rose-500/20'
                 : isCompleted
-                ? 'bg-indigo-950/95 text-white border-indigo-500/40 ring-2 ring-indigo-500/20'
+                ? 'bg-[#223322]/95 text-white border-[#5C7A5C]/40 ring-2 ring-[#5C7A5C]/20'
                 : 'bg-[#2B2621]/95 text-white border-[#C6511F]/40'
             }`}
           >

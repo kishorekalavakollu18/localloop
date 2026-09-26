@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { providerService } from '../services/api';
-import { getUserCoordinates, CATEGORIES } from '../utils/geo';
+import { getUserCoordinates, CATEGORIES, resolvePincode, extractPincode } from '../utils/geo';
 import AuthLayout from '../components/AuthLayout';
 import {
   User,
@@ -164,13 +164,22 @@ const RegisterPage = () => {
 
       // 2. If provider role, create provider profile
       if (role === 'provider') {
+        let finalCoordinates = coordinates;
+        const foundPincode = extractPincode(address);
+        if (foundPincode) {
+          const resolved = resolvePincode(foundPincode);
+          if (resolved) {
+            finalCoordinates = [resolved.lng, resolved.lat];
+          }
+        }
+
         const provRes = await providerService.create({
           businessName,
           category,
           description,
           phone,
           address,
-          coordinates,
+          coordinates: finalCoordinates,
           pricing: {
             type: pricingType,
             amount: Number(pricingAmount),

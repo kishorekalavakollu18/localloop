@@ -243,7 +243,7 @@ const LoginPage = () => {
           <button
             type="button"
             onClick={() => handleQuickLogin('ramesh.plumbing@example.com', 'password123')}
-            className="px-3 py-2 rounded-xl bg-blue-50 border border-blue-200/60 text-blue-700 hover:bg-blue-100/70 font-semibold text-left transition-colors flex items-center gap-1.5"
+            className="px-3 py-2 rounded-xl bg-[#F7EBE5] border border-[#F0D5C9] text-[#C6511F] hover:bg-[#F2D7CB] font-semibold text-left transition-colors flex items-center gap-1.5"
           >
             <span>🔧</span> Plumber Ramesh
           </button>

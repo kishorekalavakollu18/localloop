@@ -92,10 +92,10 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-6 py-5 text-white flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#2B2621] via-[#38302A] to-[#2B2621] px-6 py-5 text-white flex items-center justify-between border-b border-[#4A4036]">
           <div>
             <h3 className="text-lg font-bold">Book Service</h3>
-            <p className="text-xs text-indigo-100 mt-0.5">
+            <p className="text-xs text-[#E8DFC9] mt-0.5">
               {provider.businessName} • ₹{provider.pricing?.amount}/{provider.pricing?.type}
             </p>
           </div>
@@ -130,7 +130,7 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
             {/* Date Selection */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-indigo-600" />
+                <Calendar className="w-4 h-4 text-[#C6511F]" />
                 Select Service Date
               </label>
               <input
@@ -139,14 +139,14 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
                 value={serviceDate}
                 onChange={(e) => setServiceDate(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium text-slate-800"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#C6511F] focus:border-[#C6511F] text-sm font-medium text-slate-800"
               />
             </div>
 
             {/* Slot Selection */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-indigo-600" />
+                <Clock className="w-4 h-4 text-[#C6511F]" />
                 Select Preferred Time Slot
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -157,7 +157,7 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
                     onClick={() => setSelectedSlot(slot)}
                     className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all text-center ${
                       selectedSlot === slot
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                        ? 'bg-[#C6511F] text-white border-[#C6511F] shadow-sm'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
@@ -170,7 +170,7 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
             {/* Notes / Issue Description */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-indigo-600" />
+                <FileText className="w-4 h-4 text-[#C6511F]" />
                 Service Notes / Problem Details
               </label>
               <textarea
@@ -178,7 +178,7 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Describe what needs repair or specify special requirements..."
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-slate-800"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#C6511F] focus:border-[#C6511F] text-sm text-slate-800"
               />
             </div>
 
@@ -210,7 +210,7 @@ const BookingModal = ({ provider, isOpen, onClose }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-md shadow-indigo-600/30 transition-all disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-2.5 bg-[#C6511F] hover:bg-[#B04316] text-white text-sm font-bold rounded-xl shadow-md shadow-[#C6511F]/20 transition-all disabled:opacity-50"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 <span>{loading ? 'Booking...' : 'Confirm Request'}</span>

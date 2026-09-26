@@ -95,10 +95,12 @@ const ChatModal = ({ booking, isOpen, onClose }) => {
             </div>
             <div>
               <h3 className="font-heading font-extrabold text-sm text-[#FBF7F0]">
-                {booking.providerId?.businessName || 'Service Chat'}
+                {isCustomer
+                  ? (booking.providerId?.businessName || 'Service Provider')
+                  : (booking.customerId?.name || 'Customer')}
               </h3>
               <p className="text-[10px] text-[#D6C7B2]">
-                Booking #{booking._id?.slice(-6)} • {booking.slot}
+                {isCustomer ? (booking.providerId?.category || 'Service') : 'Customer'} • Booking #{booking._id?.slice(-6)} • {booking.slot}
               </p>
             </div>
           </div>

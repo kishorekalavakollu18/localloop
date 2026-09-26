@@ -5,7 +5,11 @@ import {
   getUserCoordinates,
   CITY_PRESETS,
   CATEGORIES,
+  POPULAR_PINCODES,
+  resolvePincode,
+  extractPincode,
   calculateDistanceKm,
+  calculateAccurateDistance,
 } from '../utils/geo';
 import LeafletMap from '../components/LeafletMap';
 import ProviderCard from '../components/ProviderCard';
@@ -17,6 +21,7 @@ import {
   AlertCircle,
   RefreshCw,
   Sliders,
+  Check,
 } from 'lucide-react';
 
 const DiscoverPage = () => {
@@ -29,10 +34,21 @@ const DiscoverPage = () => {
   const [sortBy, setSortBy] = useState('distance'); // distance, rating, price_asc, price_desc
   const [fallbackInfo, setFallbackInfo] = useState('');
 
-  // Geolocation State
-  const [userLocation, setUserLocation] = useState(null); // { lat, lng }
-  const [locationStatus, setLocationStatus] = useState('prompt'); // prompt, success, denied, fallback
-  const [locationName, setLocationName] = useState('Bengaluru (Default)');
+  // Pincode & Geolocation State
+  const [userPincode, setUserPincode] = useState(() => localStorage.getItem('localloop_pincode') || '560038');
+  const [pincodeInput, setPincodeInput] = useState(() => localStorage.getItem('localloop_pincode') || '560038');
+  const [userLocation, setUserLocation] = useState(() => {
+    const saved = localStorage.getItem('localloop_pincode') || '560038';
+    const resolved = resolvePincode(saved) || resolvePincode('560038');
+    return { lat: resolved.lat, lng: resolved.lng };
+  });
+  const [locationStatus, setLocationStatus] = useState('success');
+  const [locationName, setLocationName] = useState(() => {
+    const saved = localStorage.getItem('localloop_pincode') || '560038';
+    const resolved = resolvePincode(saved) || resolvePincode('560038');
+    return `${resolved.name} (${resolved.pincode})`;
+  });
+  const [isCrossCityNotice, setIsCrossCityNotice] = useState(false);
 
   // Providers & UI State
   const [providers, setProviders] = useState([]);
@@ -41,27 +57,53 @@ const DiscoverPage = () => {
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState('split'); // split, map, list
 
-  // Fetch live user coordinates
+  // Apply Pincode helper
+  const handleApplyPincode = (pincodeToApply) => {
+    const code = (pincodeToApply || pincodeInput || '').trim();
+    if (!code) return;
+    const resolved = resolvePincode(code);
+    if (resolved) {
+      setUserLocation({ lat: resolved.lat, lng: resolved.lng });
+      setUserPincode(resolved.pincode);
+      setPincodeInput(resolved.pincode);
+      setLocationName(`${resolved.name} (${resolved.pincode})`);
+      setLocationStatus('success');
+      setIsCrossCityNotice(false);
+      localStorage.setItem('localloop_pincode', resolved.pincode);
+    } else {
+      alert(`Pincode "${code}" not found in local index. Please enter a valid 6-digit Indian postal code (e.g. 560038, 560095).`);
+    }
+  };
+
+  // Fetch live user coordinates with GPS
   const handleRequestLocation = useCallback(async () => {
     setLocationStatus('loading');
     setError('');
     try {
       const coords = await getUserCoordinates();
-      setUserLocation({ lat: coords.lat, lng: coords.lng });
-      setLocationStatus('success');
-      setLocationName('Live Geolocation');
+      // Check if distance from Bengaluru cluster center is > 50km
+      const distFromBangalore = calculateDistanceKm(coords.lat, coords.lng, 12.9716, 77.5946);
+      if (distFromBangalore && distFromBangalore > 50) {
+        setIsCrossCityNotice(true);
+        // Keep search centered on user's selected neighborhood pincode for accurate local distances (0.8-5 km)
+        const resolved = resolvePincode(userPincode) || resolvePincode('560038');
+        setUserLocation({ lat: resolved.lat, lng: resolved.lng });
+        setLocationName(`${resolved.name} (${resolved.pincode})`);
+        setLocationStatus('success');
+      } else {
+        setIsCrossCityNotice(false);
+        setUserLocation({ lat: coords.lat, lng: coords.lng });
+        setLocationStatus('success');
+        setLocationName('Live Geolocation');
+      }
     } catch (err) {
-      console.warn('Geolocation failed:', err.message);
+      console.warn('Geolocation fallback:', err.message);
       setLocationStatus('denied');
-      setUserLocation({ lat: 12.9716, lng: 77.5946 });
-      setLocationName('Bengaluru (City Preset)');
+      const resolved = resolvePincode(userPincode) || resolvePincode('560038');
+      setUserLocation({ lat: resolved.lat, lng: resolved.lng });
+      setLocationName(`${resolved.name} (${resolved.pincode})`);
     }
-  }, []);
-
-  // Initialize location on mount
-  useEffect(() => {
-    handleRequestLocation();
-  }, [handleRequestLocation]);
+  }, [userPincode]);
 
   // Load nearby providers from backend
   const fetchProviders = useCallback(async () => {
@@ -85,17 +127,17 @@ const DiscoverPage = () => {
       if (res.success) {
         const rawProviders = res.providers || [];
         const mapped = rawProviders.map((p) => {
-          const pLat = p.location?.coordinates?.[1];
-          const pLng = p.location?.coordinates?.[0];
-          const exactDist = userLocation && pLat && pLng
-            ? calculateDistanceKm(userLocation.lat, userLocation.lng, pLat, pLng)
-            : p.distanceKm;
-
+          const exactDist = calculateAccurateDistance(userLocation, userPincode, p);
           return {
             ...p,
             distanceKm: exactDist !== null && exactDist !== undefined ? exactDist : p.distanceKm,
           };
         });
+
+        // Re-sort if sorted by distance
+        if (sortBy === 'distance') {
+          mapped.sort((a, b) => (a.distanceKm || 999) - (b.distanceKm || 999));
+        }
 
         setProviders(mapped);
         if (res.fallbackMessage) {
@@ -107,7 +149,7 @@ const DiscoverPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [category, searchQuery, radius, sortBy, userLocation]);
+  }, [category, searchQuery, radius, sortBy, userLocation, userPincode]);
 
   useEffect(() => {
     fetchProviders();
@@ -116,7 +158,13 @@ const DiscoverPage = () => {
   const handleSelectCityPreset = (city) => {
     setUserLocation({ lat: city.lat, lng: city.lng });
     setLocationName(city.name);
+    if (city.pincode) {
+      setUserPincode(city.pincode);
+      setPincodeInput(city.pincode);
+      localStorage.setItem('localloop_pincode', city.pincode);
+    }
     setLocationStatus('success');
+    setIsCrossCityNotice(false);
   };
 
   return (
@@ -236,6 +284,71 @@ const DiscoverPage = () => {
             </div>
           </div>
 
+          {/* Dedicated Pincode Distance Tracker Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-[#F2EBDC] px-3.5 py-2.5 rounded-2xl border border-[#E8DFC9]">
+            <div className="flex items-center gap-2 flex-1 min-w-[280px]">
+              <span className="text-xs font-bold text-[#2B2621] flex items-center gap-1.5 whitespace-nowrap">
+                <MapPin className="w-4 h-4 text-[#C6511F]" />
+                Your Pincode:
+              </span>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleApplyPincode();
+                }}
+                className="flex items-center gap-1.5 flex-1 max-w-xs"
+              >
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={pincodeInput}
+                  onChange={(e) => setPincodeInput(e.target.value.replace(/\D/g, ''))}
+                  placeholder="e.g. 560038"
+                  className="w-24 sm:w-28 px-3 py-1.5 bg-white rounded-xl text-xs font-bold text-[#2B2621] border border-[#E8DFC9] focus:outline-hidden focus:ring-2 focus:ring-[#C6511F]"
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 bg-[#C6511F] hover:bg-[#B04316] text-white text-xs font-bold rounded-xl transition-all shadow-xs"
+                >
+                  Track Distance
+                </button>
+              </form>
+            </div>
+
+            {/* Quick Pincode Hubs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto text-[11px] font-bold">
+              <span className="text-[#8C8275] hidden sm:inline">Neighborhood Hubs:</span>
+              {POPULAR_PINCODES.map((hub) => (
+                <button
+                  key={hub.pincode}
+                  onClick={() => handleApplyPincode(hub.pincode)}
+                  className={`px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap ${
+                    userPincode === hub.pincode
+                      ? 'bg-[#C6511F] text-white shadow-xs'
+                      : 'bg-white/80 hover:bg-white text-[#2B2621] border border-[#E8DFC9]'
+                  }`}
+                >
+                  {hub.name} ({hub.pincode})
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cross-City Notification Notice */}
+          {isCrossCityNotice && (
+            <div className="bg-[#FFF8EE] border border-[#F4DCB5] px-4 py-2.5 rounded-2xl text-xs text-[#B87719] flex items-center justify-between gap-3 font-medium">
+              <span>
+                📍 Live GPS is outside Bengaluru. Distances are calculated accurately for <strong>{locationName}</strong> (0.8–5 km). Type your pincode above to adjust.
+              </span>
+              <button
+                onClick={() => setIsCrossCityNotice(false)}
+                className="text-xs font-bold underline shrink-0 hover:text-[#2B2621]"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {/* Category Filter Pills */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             {CATEGORIES.map((cat) => (
@@ -273,17 +386,6 @@ const DiscoverPage = () => {
             >
               Show All Services →
             </button>
-          </div>
-        )}
-
-        {locationStatus === 'denied' && (
-          <div className="mb-4 flex items-center justify-between p-3.5 bg-[#FDF4E5] border border-[#F4DCB5] rounded-2xl text-xs text-[#B87719] font-bold">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-[#B87719] shrink-0" />
-              <span>
-                Geolocation permission was not granted. Showing search around <b>{locationName}</b>.
-              </span>
-            </div>
           </div>
         )}
 

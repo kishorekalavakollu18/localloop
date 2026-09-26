@@ -168,6 +168,7 @@ exports.getBookingsByProvider = async (req, res) => {
     }
 
     const bookings = await Booking.find({ providerId })
+      .populate('providerId', 'businessName category address pricing images userId')
       .populate('customerId', 'name email phone')
       .sort({ serviceDate: -1, createdAt: -1 });
 
@@ -221,10 +222,10 @@ exports.updateBookingStatus = async (req, res) => {
     }
 
     if (isCustomer && !isProvider && !isAdmin) {
-      if (status !== 'cancelled') {
+      if (status !== 'cancelled' && status !== 'completed') {
         return res.status(403).json({
           success: false,
-          message: 'Customers can only cancel a booking',
+          message: 'Customers can only cancel or mark completion on a booking',
         });
       }
     }
