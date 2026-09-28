@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const { Server } = require('socket.io');
 
 // Load environment variables
+dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
 
 const connectDB = require('./src/config/db');
